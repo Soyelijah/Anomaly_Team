@@ -1,0 +1,6 @@
+{
+  "name": "ANOMALY - Portal de Clan MU Online",
+  "description": "Portal oficial y centro de operaciones táctico del clan ANOMALY en Smash MU. Roster en vivo, radar de eventos, escuadrones de Castle Siege, cuentas y optimizador de builds.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

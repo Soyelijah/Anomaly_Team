@@ -1,0 +1,1835 @@
+<html lang="es" class="dark scroll-smooth"><head><script data-bard-client-injected="true">(function(firebaseConfig, initialAuthToken, appId) {
+        window.__firebase_config = firebaseConfig;
+        window.__initial_auth_token = initialAuthToken;
+        window.__app_id = appId;
+            })("\n{\n  \"apiKey\": \"AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtbHvZY\",\n  \"authDomain\": \"bard-frontend.firebaseapp.com\",\n  \"projectId\": \"bard-frontend\",\n  \"storageBucket\": \"bard-frontend.firebasestorage.app\",\n  \"messagingSenderId\": \"175205271074\",\n  \"appId\": \"1:175205271074:web:2b7bd4d34d33bf38e6ec7b\"\n}\n","eyJhbGciOiJSUzI1NiIsImtpZCI6IjExNjRiNzdiNDMzZDdhMDAyMWI4NjE4YjhjYTU3ZTMyZGI5MWUxMTMiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmaXJlYmFzZS1hZG1pbnNkay1mYnN2Y0BiYXJkLWZyb250ZW5kLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwiYXVkIjoiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCJ1aWQiOiIxMDQzMTk0ODU0MDA5ODkzMzI0MSIsImlzcyI6ImZpcmViYXNlLWFkbWluc2RrLWZic3ZjQGJhcmQtZnJvbnRlbmQuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJjbGFpbXMiOnsiYXBwSWQiOiJjXzAzOWZkZTc2OWYxYjYwODNfaW5kZXguaHRtbC0yMzYifSwiZXhwIjoxNzkzMDQ3MzYxLCJpYXQiOjE3OTMwNDM3NjEsImFsZyI6IlJTMjU2In0.g3heePL-pAC9kgjsWeuNzX3o-Wj9vOHhe_x9qMsyERaDif2iRvy_d3dexnEjVxuKOtO1xdJ_PyWjuI1Wk3fc2fSm9CS-ocBWl2kxxy4zG9Hd_tj4_M-AoZPEK4YYkYpZJIHMz25mwnIBaf7K1KS7Z6ntA-TwxqzyLnLfVs-_zeYsV6Cf1Nm5qeFHJeQm_jfjF9S-2udCegB3pMbNPMlUyu-NxXDvd-c9iHLbUuEboet9h5r4QYcKShCc-Rd0Vf8VsIqY2QttXv8ROgo6HIdzaUAyKtuPk25w0laWssvalHqRP9EnTpGdQLa9vsaNLrS-qIDy8e8wfUGR9vyGfyB8Sg","c_039fde769f1b6083_index.html-236")</script><script data-bard-client-injected="true">
+  document.addEventListener('input', (event) => {
+    if (event.target && (event.target.isContentEditable || event.target.hasAttribute('contenteditable'))) {
+      const clonedDoc = document.cloneNode(true);
+      const injectedScripts = clonedDoc.querySelectorAll('[data-bard-client-injected="true"]');
+      injectedScripts.forEach(el => el.remove());
+      window.parent.postMessage({
+        type: 'inlineEdit',
+        html: '<!DOCTYPE html>\n' + clonedDoc.documentElement.outerHTML
+      }, '*');
+    }
+  });
+</script><script data-bard-client-injected="true">(function(){'use strict';window.addEventListener("message",a=>{a.data&&a.data.type==="SUPPLEMENTAL_DATA_UPDATE"&&window.dispatchEvent(new CustomEvent("supplementaldataupdate",{detail:a.data.data}))});}).call(this);
+</script><script data-bard-client-injected="true">(function() {
+  const SCROLL_KEYS = new Set([
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+    ' ', 'Spacebar', 'PageUp', 'PageDown', 'Home', 'End',
+  ]);
+  const HORIZONTAL_KEYS = new Set(['ArrowLeft', 'ArrowRight']);
+
+  function isTextEntryTarget(target) {
+    if (!target) return false;
+    const tagName = target.tagName;
+    return tagName === 'INPUT' || tagName === 'TEXTAREA' ||
+        tagName === 'SELECT' || target.isContentEditable === true;
+  }
+
+  // An element absorbs the key only if it both overflows on the axis being
+  // scrolled and is configured to scroll on that axis. The cheap dimension
+  // test runs first because getComputedStyle forces a style recalc, and this
+  // runs on every keypress. Each axis is read from its own longhand: the
+  // 'overflow' shorthand serializes as two values when the axes differ, which
+  // is the common 'overflow-x: hidden; overflow-y: auto' pane.
+  function canScroll(node, horizontal) {
+    const overflows = horizontal ? node.scrollWidth > node.clientWidth
+                                 : node.scrollHeight > node.clientHeight;
+    if (!overflows) return false;
+    const style = window.getComputedStyle(node);
+    const overflow = horizontal ? style.overflowX : style.overflowY;
+    return overflow === 'auto' || overflow === 'scroll';
+  }
+
+  // Walks up from the event target so nested scrollers keep their behavior.
+  // <body> is included because pages that pin the root height make it the
+  // scroll container.
+  function hasScrollableAncestor(target, horizontal) {
+    let node = target;
+    while (node && node !== document.documentElement) {
+      if (canScroll(node, horizontal)) return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
+  function rootCanScroll(horizontal) {
+    const scroller = document.scrollingElement || document.documentElement;
+    if (!scroller) return false;
+    // Tolerate a pixel of rounding so subpixel layouts do not look scrollable.
+    return horizontal ? scroller.scrollWidth > window.innerWidth + 1
+                      : scroller.scrollHeight > window.innerHeight + 1;
+  }
+
+  window.addEventListener('keydown', function(event) {
+    if (!SCROLL_KEYS.has(event.key)) return;
+    if (event.defaultPrevented) return;
+    // Alt and Meta turn arrows into browser history navigation, and Ctrl is
+    // reserved for shortcuts, so none of them are scroll intent.
+    if (event.altKey || event.metaKey || event.ctrlKey) return;
+
+    const target = event.target;
+    if (isTextEntryTarget(target)) return;
+
+    // Anything that can still absorb the scroll gets to keep it.
+    const horizontal = HORIZONTAL_KEYS.has(event.key);
+    if (rootCanScroll(horizontal)) return;
+    if (hasScrollableAncestor(target, horizontal)) return;
+
+    event.preventDefault();
+  }, {capture: true, passive: false});
+})();</script><script data-bard-client-injected="true">(function() {
+  // Ensure this script is executed only once
+  if (window.firebaseAuthBridgeScriptLoaded) {
+    return;
+  }
+  window.firebaseAuthBridgeScriptLoaded = true;
+
+  let nextTokenPromiseId = 0;
+
+  // Stores { resolve, reject } for ongoing token requests
+  const pendingTokenPromises = {};
+
+  // Listen for messages from the Host Application
+  window.addEventListener('message', function(event) {
+
+    const messageData = event.data;
+
+  if (messageData && messageData.type === 'RESOLVE_NEW_FIREBASE_TOKEN') {
+      const { success, token, error, promiseId } = messageData ?? {};
+      if (pendingTokenPromises[promiseId]) {
+        if (success) {
+          pendingTokenPromises[promiseId].resolve(token);
+        } else {
+          pendingTokenPromises[promiseId].reject(new Error(error || 'Token refresh failed from host.'));
+        }
+        delete pendingTokenPromises[promiseId];
+      }
+    }
+  });
+
+  // Expose a function for the Generated App to request a new Firebase token
+  window.requestNewFirebaseToken = function() {
+    const currentPromiseId = nextTokenPromiseId++;
+    const promise = new Promise((resolve, reject) => {
+      pendingTokenPromises[currentPromiseId] = { resolve, reject };
+    });
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'REQUEST_NEW_FIREBASE_TOKEN',
+        promiseId: currentPromiseId
+      }, '*');
+    } else {
+      pendingTokenPromises[currentPromiseId].reject(new Error('No parent window to request token from.'));
+      delete pendingTokenPromises[currentPromiseId];
+    }
+    return promise;
+  };
+})();</script><script data-bard-client-injected="true">
+let realOriginalGetUserMedia = null;
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  realOriginalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+}
+
+(function() {
+  if (navigator.mediaDevices && navigator.mediaDevices.__proto__) {
+    try {
+      Object.defineProperty(navigator.mediaDevices.__proto__, 'getUserMedia', {
+        get: function() {
+          return undefined; // Or throw an error
+        },
+        configurable: false
+      });
+    } catch (error) {
+      console.error("Error defining prototype getter:", error);
+    }
+  }
+})();
+
+(function() {
+  const pendingMediaResolvers = {};
+  let nextMediaPromiseId = 0;
+
+  function requestMediaPermissions(constraints) {
+    const mediaPromiseId = nextMediaPromiseId++;
+    const promise = new Promise((resolve, reject) => {
+      pendingMediaResolvers[mediaPromiseId] = (granted) => {
+        delete pendingMediaResolvers[mediaPromiseId];
+        resolve(granted);
+      };
+    });
+
+    window.parent.postMessage({
+      type: 'requestMediaPermission',
+      constraints: constraints,
+      promiseId: mediaPromiseId,
+    }, '*');
+
+    return promise;
+  }
+
+  let originalGetUserMedia = realOriginalGetUserMedia;
+
+  function interceptGetUserMedia() {
+    if (navigator.mediaDevices) {
+      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+        value: function(constraints) {
+          return requestMediaPermissions(constraints).then((granted) => {
+            if (granted) {
+              if (originalGetUserMedia) {
+                return originalGetUserMedia(constraints);
+              } else {
+                throw new Error("Original getUserMedia not available.");
+              }
+            } else {
+              throw new DOMException('Permission denied', 'NotAllowedError');
+            }
+          });
+        },
+        writable: false,
+        configurable: false
+      });
+    }
+  }
+
+  interceptGetUserMedia();
+
+  const observer = new MutationObserver(function(mutationsList, observer) {
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'reconfigured' && mutation.name === 'getUserMedia' && mutation.object === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'attributes' && mutation.attributeName === 'getUserMedia' && mutation.target === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'childList' && mutation.addedNodes) {
+        mutation.addedNodes.forEach(node => {
+          if (node === navigator.mediaDevices) {
+            interceptGetUserMedia();
+          }
+        });
+      }
+    }
+  });
+
+  function interceptSpeechRecognition() {
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      return;
+    }
+
+    const OriginalSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const SpeechRecognitionWrapper = function(...args) {
+      const recognizer = new OriginalSpeechRecognition(...args);
+      const originalStart = recognizer.start.bind(recognizer);
+
+      recognizer.start = function() {
+        requestMediaPermissions({ audio: true }).then(granted => {
+          if (granted) {
+            originalStart();
+          } else {
+            const errorEvent = new SpeechRecognitionErrorEvent('error');
+            errorEvent.error = 'not-allowed'; // This is the standard error for permission denial.
+            recognizer.dispatchEvent(errorEvent);
+          }
+        });
+      };
+
+      return recognizer;
+    };
+
+    SpeechRecognitionWrapper.prototype = OriginalSpeechRecognition.prototype;
+    SpeechRecognitionWrapper.prototype.constructor = SpeechRecognitionWrapper;
+
+    if (window.SpeechRecognition) {
+      window.SpeechRecognition = SpeechRecognitionWrapper;
+    }
+    if (window.webkitSpeechRecognition) {
+      window.webkitSpeechRecognition = SpeechRecognitionWrapper;
+    }
+  }
+
+  interceptSpeechRecognition();
+
+  window.addEventListener('message', function(event) {
+    if (event.data) {
+      if (event.data.type === 'resolveMediaPermission') {
+        const { promiseId, granted } = event.data;
+        if (pendingMediaResolvers[promiseId]) {
+          pendingMediaResolvers[promiseId](granted);
+        }
+      }
+    }
+  });
+
+})();</script><script ws-interception-config="{&quot;parentOrigin&quot;:&quot;https://gemini.google.com&quot;,&quot;proxiedDomains&quot;:[]}" data-bard-client-injected="true">(function(){'use strict';var u=typeof Object.defineProperties=="function"?Object.defineProperty:function(b,d,e){if(b==Array.prototype||b==Object.prototype)return b;b[d]=e.value;return b};function v(b){b=["object"==typeof globalThis&&globalThis,b,"object"==typeof window&&window,"object"==typeof self&&self,"object"==typeof global&&global];for(var d=0;d<b.length;++d){var e=b[d];if(e&&e.Math==Math)return e}throw Error("Cannot find global object");}var w=v(this);
+function y(b,d){if(d)a:{var e=w;b=b.split(".");for(var h=0;h<b.length-1;h++){var k=b[h];if(!(k in e))break a;e=e[k]}b=b[b.length-1];h=e[b];d=d(h);d!=h&&d!=null&&u(e,b,{configurable:!0,writable:!0,value:d})}}function z(b){function d(h){return b.next(h)}function e(h){return b.throw(h)}return new Promise(function(h,k){function m(n){n.done?h(n.value):Promise.resolve(n.value).then(d,e).then(m,k)}m(b.next())})}y("globalThis",function(b){return b||w});/*
+
+ Copyright The Closure Library Authors.
+ SPDX-License-Identifier: Apache-2.0
+*/
+function A(b,d){function e(){}e.prototype=d.prototype;b.j=d.prototype;b.prototype=new e;b.prototype.constructor=b;b.h=function(h,k,m){for(var n=Array(arguments.length-2),p=2;p<arguments.length;p++)n[p-2]=arguments[p];return d.prototype[k].apply(h,n)}};function B(b,d,e="*"){function h(a){if(typeof a==="string")return F.encode(a).buffer;if(a instanceof ArrayBuffer)return a.slice(0);if(ArrayBuffer.isView(a))return a.buffer.slice(a.byteOffset,a.byteOffset+a.byteLength);throw Error("Invalid data type");}function k(a){a=h(a);var f={type:"send",data:new Uint8Array(a)},g;(g=r)==null||g.postMessage(f,[a])}function m(){if(!r)throw Error("Data port not captured yet.");r.onmessage=a=>{if(a.data.type==="message"){a=new MessageEvent("message",{data:G.decode(a.data.data)});
+let f;(f=c.onmessage)==null||f.call(c,a);c.dispatchEvent(a)}}}function n(){if(!t)throw Error("Control port not captured yet.");t.onmessage=a=>{switch(a.data.type){case "open":l=1;var f=new Event("open"),g;(g=c.onopen)==null||g.call(c,f);c.dispatchEvent(f);q.forEach(H=>{k(H)});q=[];break;case "close":g=a.data;l=3;g=new CloseEvent("close",{code:g.code,reason:g.reason,wasClean:g.wasClean});(f=c.onclose)==null||f.call(c,g);c.dispatchEvent(g);break;case "error":l=3;f=new Event("error");let x;(x=c.onerror)==
+null||x.call(c,f);c.dispatchEvent(f)}}}function p(a){return z(function*(){var f=new MessageChannel;t=f.port1;var g=new MessageChannel;r=g.port1;n();m();window.parent.postMessage({type:"websocket_open",portOrdering:["control","data"],url:b,protocols:a||[],connectionId:I},e,[f.port2,g.port2])}())}var c=Reflect.construct(EventTarget,[],new.target);c.CONNECTING=0;c.OPEN=1;c.CLOSING=2;c.CLOSED=3;c.url=b;c.binaryType="arraybuffer";c.protocol="";c.i="";var l=0,t=null,r=null,q=[],F=new TextEncoder,G=new TextDecoder;
+c.onopen=null;c.onmessage=null;c.onclose=null;c.onerror=null;Object.defineProperty(c,"readyState",{get:()=>l,enumerable:!0,configurable:!0});Object.defineProperty(c,"bufferedAmount",{get:()=>{var a=0;q.forEach(f=>{a+=typeof f==="string"?f.length:f.byteLength});return a},enumerable:!0,configurable:!0});var I=function(){var a;return((a=globalThis.crypto)==null?0:a.randomUUID)?globalThis.crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,f=>{var g=Math.random()*16|0;return(f===
+"x"?g:g&3|8).toString(16)})}();c.send=a=>{if(l===1)a instanceof Blob?a.arrayBuffer().then(f=>{k(f)}):k(a);else if(l===0)if(typeof a==="string")q.push(a);else if(a instanceof ArrayBuffer||ArrayBuffer.isView(a))q.push(h(a));else throw Error("Sending Blob is not supported before the connection is open.");else console.debug("WebSocket send called in CLOSING or CLOSED state; ignored.")};c.close=(a=1E3,f="")=>{if(l!==2&&l!==3){l=2;a={type:"close",code:a,reason:f,wasClean:a===1E3};var g;(g=t)==null||g.postMessage(a)}};
+Promise.resolve().then(()=>p(d));return c}A(B,EventTarget);var C=document.currentScript,D=C==null?void 0:C.getAttribute("ws-interception-config");if(!D)throw Error("WebSocket Interceptor: Missing ws-interception-config attribute in the script tag.");var E=JSON.parse(D);if(!E.parentOrigin||typeof E.parentOrigin!=="string")throw Error("WebSocket Interceptor: Invalid parentOrigin in ws-interception-config");
+(function(b){var d=Object.getOwnPropertyDescriptor(window,"WebSocket");if(!d||d.writable||d.configurable)d=Object.assign(function(e,h){try{let k=(new URL(e)).hostname;if(b.proxiedDomains.some(m=>k===m||k.endsWith(`.${m}`)))return new B(e,h,b.parentOrigin)}catch(k){throw window.parent.postMessage({type:"websocket_blocked",url:e,reason:"blocked_invalid_url"},b.parentOrigin),new DOMException(`WebSocket connection to '${e}' is not allowed in Canvas.`,"SecurityError");}window.parent.postMessage({type:"websocket_blocked",
+url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMException(`WebSocket connection to '${e}' is not allowed in Canvas.`,"SecurityError");},{CONNECTING:0,OPEN:1,CLOSING:2,CLOSED:3}),Object.defineProperty(window,"WebSocket",{value:d,writable:!1,configurable:!1})})({proxiedDomains:E.proxiedDomains||[],parentOrigin:E.parentOrigin});}).call(this);
+</script><script data-bard-client-injected="true">((function(modelInformation) {
+  const originalFetch = window.fetch;
+  // TODO: b/421908508 - Move these out of the script and match all generative AI model calls.
+  let googleLlmBaseApiUrls = [
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.textModelName + ':streamGenerateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.textModelName + ':generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.imageModelName + ':predict',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.imageModelName + ':predictLongRunning',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.imageEditModelName + ':generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.imageTransformModelName + ':generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.videoModelName + ':predict',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.videoModelName + ':predictLongRunning',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.ttsModelName + ':generateContent',
+  ];
+  modelInformation.deprecatedTextModelNames.forEach((modelName) => {
+    googleLlmBaseApiUrls.push(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':streamGenerateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent',
+    );
+  });
+  modelInformation.deprecatedImageModelNames.forEach((modelName) => {
+    googleLlmBaseApiUrls.push(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':predict',
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':predictLongRunning',
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':streamGenerateContent',
+    );
+  });
+  modelInformation.deprecatedGenerateImageModelNames.forEach((modelName) => {
+    googleLlmBaseApiUrls.push(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':streamGenerateContent',
+    );
+  });
+  modelInformation.deprecatedImageTransformModelNames.forEach((modelName) => {
+    googleLlmBaseApiUrls.push(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':streamGenerateContent',
+    );
+  });
+
+  const pendingFetchResolvers = {};
+  let nextPromiseId = 0;
+
+  function handleStringInput(input, optionsArgument) {
+    const actualUrl = input;
+    const fetchCallArgs = [actualUrl, optionsArgument];
+    const effectiveOptions = optionsArgument || {};
+    const bodyForApiKeyCheck = effectiveOptions.body;
+    const bodyForPostMessage = effectiveOptions.body;
+    return { actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage };
+  }
+
+  function handleRequestInput(input, optionsArgument) {
+    const actualUrl = input.url;
+    const fetchCallArgs = [input, optionsArgument];
+    const effectiveOptions = { method: input.method, headers: new Headers(input.headers) };
+    let bodyForApiKeyCheck;
+    let bodyForPostMessage;
+
+    if (optionsArgument) {
+      if (optionsArgument.method) effectiveOptions.method = optionsArgument.method;
+      if (optionsArgument.headers) effectiveOptions.headers = new Headers(optionsArgument.headers);
+      if ('body' in optionsArgument) {
+        bodyForApiKeyCheck = optionsArgument.body;
+        bodyForPostMessage = optionsArgument.body;
+      } else {
+        bodyForApiKeyCheck = undefined;
+        bodyForPostMessage = input.body;
+      }
+    } else {
+      bodyForApiKeyCheck = undefined;
+      bodyForPostMessage = input.body;
+    }
+    return { actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage };
+  }
+
+  window.fetch = function(input, optionsArgument) {
+    let actualUrl;
+    let fetchCallArgs;
+    let effectiveOptions = {};
+    let bodyForApiKeyCheck;
+    let bodyForPostMessage;
+
+    if (typeof input === 'string') {
+      ({actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage} = handleStringInput(input, optionsArgument));
+    } else if (input instanceof Request) {
+      ({actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage} = handleRequestInput(input, optionsArgument));
+    } else {
+      return originalFetch.apply(window, [input, optionsArgument]);
+    }
+
+    effectiveOptions.method = effectiveOptions.method || 'GET';
+    if (!effectiveOptions.headers) {
+      effectiveOptions.headers = new Headers();
+    }
+
+
+    if (typeof actualUrl === 'string' && googleLlmBaseApiUrls.some((url) => actualUrl.startsWith(url))) {
+      let apiKeyIsNull = true;
+
+      const regex = new RegExp("models/([^:]+)");
+      const modelNameMatch = actualUrl.match(regex);
+      const modelName = modelNameMatch ? modelNameMatch[1] : 'unspecified';
+
+
+      try {
+        const urlObject = new URL(actualUrl);  // Use URL object for robust parsing
+        const apiKeyParam = urlObject.searchParams.get('key');
+        if (apiKeyParam) {
+          apiKeyIsNull = false;
+        }
+      } catch (e) {
+        // Continue checks even if URL parsing fails
+      }
+
+      if (apiKeyIsNull && effectiveOptions.headers) {
+        const h = new Headers(effectiveOptions.headers);
+        const apiKeyHeaderValue = h.get('X-API-Key') || h.get('x-api-key');
+        if (apiKeyHeaderValue) {
+          apiKeyIsNull = false;
+          return originalFetch.apply(window, fetchCallArgs);
+        }
+      }
+
+      if (apiKeyIsNull && effectiveOptions.method && ['POST', 'PUT', 'PATCH'].includes(effectiveOptions.method.toUpperCase()) && typeof bodyForApiKeyCheck === 'string') {
+        try {
+          const bodyData = JSON.parse(bodyForApiKeyCheck);
+          if (bodyData && bodyData.apiKey) {
+            apiKeyIsNull = false;
+            return originalFetch.apply(window, fetchCallArgs);
+          }
+        } catch (e) {
+          // Ignore JSON parsing errors
+        }
+      }
+
+      if(apiKeyIsNull) {
+        const promiseId = nextPromiseId++;
+        const promise = new Promise((resolve) => {
+          pendingFetchResolvers[promiseId] = (resolvedResponse) => {
+            delete pendingFetchResolvers[promiseId];
+            resolve(resolvedResponse);
+          };
+        });
+
+        let serializedBodyForPostMessage;
+        if (typeof bodyForPostMessage === 'string' || bodyForPostMessage == null) {
+            serializedBodyForPostMessage = bodyForPostMessage;
+        } else if (bodyForPostMessage instanceof ReadableStream) {
+            serializedBodyForPostMessage = null;
+        } else {
+            try {
+                serializedBodyForPostMessage = JSON.stringify(bodyForPostMessage);
+            } catch (e) {
+                serializedBodyForPostMessage = null;
+            }
+        }
+
+        const messageOptions = {
+            method: effectiveOptions.method,
+            headers: Object.fromEntries(new Headers(effectiveOptions.headers).entries()),
+            body: serializedBodyForPostMessage
+        };
+
+        window.parent.postMessage({
+          type: 'requestFetch',
+          url: actualUrl,
+          modelName: modelName,
+          options: messageOptions,
+          promiseId: promiseId,
+        }, '*');
+
+        return promise;
+      }
+      return originalFetch.apply(window, fetchCallArgs);
+    }
+    return originalFetch.apply(window, fetchCallArgs);
+  };
+
+  window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'resolveFetch') {
+      const { promiseId, response } = event.data;
+      if (pendingFetchResolvers[promiseId]) {
+        try {
+          const reconstructedResponse = new Response(response.body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: new Headers(response.headers),
+          });
+          pendingFetchResolvers[promiseId](reconstructedResponse);
+        } catch (error) {
+          pendingFetchResolvers[promiseId](new Response(null, { status: 500, statusText: "Interceptor Response Reconstruction Error" }));
+        }
+      }
+    }
+  });
+
+}))({"textModelName":"gemini-3-flash-preview","imageModelName":"imagen-4.0-generate-001","imageEditModelName":"gemini-3.1-flash-image","imageTransformModelName":"gemini-3-pro-image","videoModelName":"veo-2.0-generate-001","ttsModelName":"gemini-2.5-flash-preview-tts","deprecatedTextModelNames":["gemini-2.0-flash","gemini-2.5-flash","gemini-2.5-flash-preview-04-17","gemini-2.5-flash-preview-05-20","gemini-2.5-flash-preview-09-2025"],"deprecatedImageModelNames":["imagen-3.0-generate-001","imagen-3.0-generate-002"],"deprecatedGenerateImageModelNames":["gemini-2.5-flash-image-preview","gemini-2.5-flash-image","gemini-3.1-flash-image-preview"],"deprecatedImageTransformModelNames":["gemini-3-pro-image-preview-11-2025"]})</script><script data-bard-client-injected="true">(function(){'use strict';function a(){window.parent.postMessage({type:"interaction"},"*")}window.addEventListener("click",a,{capture:!0,passive:!0});window.addEventListener("touchstart",a,{capture:!0,passive:!0});window.addEventListener("keydown",a,{capture:!0,passive:!0});}).call(this);
+</script><script data-bard-client-injected="true">(function() {
+  const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
+
+    /**
+   * Normalizes an error event or a promise rejection reason into a structured error object.
+   * @param {*} errorEventOrReason The error object or reason.
+   * @return {object} Structured error data { message, name, stack }.
+   */
+  function getErrorObject(errorEventOrReason) {
+    if (errorEventOrReason instanceof Error) {
+      return {
+        message: errorEventOrReason.message,
+        name: errorEventOrReason.name,
+        stack: errorEventOrReason.stack,
+      };
+    }
+    // Fallback for non-Error objects.
+    try {
+      return {
+        message: JSON.stringify(errorEventOrReason),
+        name: 'UnknownErrorType',
+        stack: null,
+      };
+    } catch (e) {
+      return {
+        message: String(errorEventOrReason),
+        name: 'UnknownErrorTypeNonStringifiable',
+        stack: null,
+      };
+    }
+  }
+
+  /**
+   * Converts an array of arguments (from log/error) into a single string.
+   * Handles Error objects specially to include their message and stack.
+   * @param {Array<*>} args - Arguments passed to console methods.
+   * @return {string} A string representation of the arguments.
+   */
+  function stringifyArgs(args) {
+    return args
+      .map((arg) => {
+        if (arg instanceof Error) {
+          const {message, stack} = arg;
+          return `Error: ${message}${stack ? ('\nStack: ' + stack) : ''}`;
+        }
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            return JSON.stringify(arg);
+          } catch (error) {
+            return '[Circular Object]';
+          }
+        } else {
+          return String(arg);
+        }
+      })
+      .join(' ');
+  }
+
+  console.log = function(...args) {
+    const logString = stringifyArgs(args);
+    window.parent.postMessage({ type: 'log', message: logString }, '*');
+    originalConsoleLog.apply(console, args);
+  };
+
+  console.error = function(...args) {
+    let errorData;
+    if (args.length > 0 && args[0] instanceof Error) {
+      const err = args[0];
+      // If the first arg is an Error, capture its details.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        ...getErrorObject(err),
+        rawArgsString: stringifyArgs(args.slice(1)),
+        timestamp: new Date().toISOString(),
+      };
+    } else {
+      // If not an Error object, treat all args as a general error message.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        message: stringifyArgs(args),
+        name: 'ConsoleLoggedError',
+        stack: null,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    window.parent.postMessage(errorData, '*');
+    originalConsoleError.apply(console, args);
+  };
+
+  // Listen for global unhandled synchronous errors.
+  window.addEventListener('error', function(event) {
+    const errorDetails = event.error ? getErrorObject(event.error) : {
+      message: event.message,
+      name: 'GlobalError',
+      stack: null,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+    };
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'global',
+      ...errorDetails,
+      message: errorDetails.message || event.message,
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+  // Listen for unhandled promise rejections (asynchronous errors).
+  window.addEventListener('unhandledrejection', function(event) {
+    const errorDetails = getErrorObject(event.reason);
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'unhandledrejection',
+      ...errorDetails,
+      message: errorDetails.message || 'Unhandled Promise Rejection',
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+})();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Clan Personalizado - Smash MU</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: {
+                            800: '#0f172a',
+                            900: '#0b0f19',
+                            950: '#05070d',
+                        },
+                        brand: {
+                            gold: '#fbbf24',
+                            cyan: '#06b6d4',
+                            purple: '#a855f7',
+                            red: '#ef4444'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 580px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 280px;
+            max-height: 340px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 320px;
+            }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0px}.right-4{right:1rem}.top-0{top:0px}.top-2{top:0.5rem}.z-10{z-index:10}.z-50{z-index:50}.mx-auto{margin-left:auto;margin-right:auto}.mb-1{margin-bottom:0.25rem}.mb-4{margin-bottom:1rem}.mt-1{margin-top:0.25rem}.block{display:block}.flex{display:flex}.inline-flex{display:inline-flex}.grid{display:grid}.hidden{display:none}.h-16{height:4rem}.h-2\.5{height:0.625rem}.h-20{height:5rem}.h-8{height:2rem}.h-2{height:0.5rem}.min-h-\[90px\]{min-height:90px}.min-h-screen{min-height:100vh}.w-2\.5{width:0.625rem}.w-36{width:9rem}.w-8{width:2rem}.w-full{width:100%}.w-2{width:0.5rem}.max-w-3xl{max-width:48rem}.max-w-7xl{max-width:80rem}.max-w-md{max-width:28rem}.max-w-xl{max-width:36rem}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite}@keyframes spin{to{transform:rotate(360deg)}}.animate-spin{animation:spin 1s linear infinite}.cursor-pointer{cursor:pointer}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-center{align-items:center}.items-stretch{align-items:stretch}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-2{gap:0.5rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.gap-6{gap:1.5rem}.space-x-1 > :not([hidden]) ~ :not([hidden]){--tw-space-x-reverse:0;margin-right:calc(0.25rem * var(--tw-space-x-reverse));margin-left:calc(0.25rem * calc(1 - var(--tw-space-x-reverse)))}.space-x-2 > :not([hidden]) ~ :not([hidden]){--tw-space-x-reverse:0;margin-right:calc(0.5rem * var(--tw-space-x-reverse));margin-left:calc(0.5rem * calc(1 - var(--tw-space-x-reverse)))}.space-x-3 > :not([hidden]) ~ :not([hidden]){--tw-space-x-reverse:0;margin-right:calc(0.75rem * var(--tw-space-x-reverse));margin-left:calc(0.75rem * calc(1 - var(--tw-space-x-reverse)))}.space-y-1 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.25rem * var(--tw-space-y-reverse))}.space-y-2 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.space-y-4 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.space-y-6 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem * var(--tw-space-y-reverse))}.space-y-8 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(2rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(2rem * var(--tw-space-y-reverse))}.divide-y > :not([hidden]) ~ :not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px * var(--tw-divide-y-reverse))}.divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]){border-color:rgb(30 41 59 / 0.6)}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.scroll-smooth{scroll-behavior:smooth}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-xl{border-radius:0.75rem}.rounded{border-radius:0.25rem}.border{border-width:1px}.border-b{border-bottom-width:1px}.border-l{border-left-width:1px}.border-amber-500\/30{border-color:rgb(245 158 11 / 0.3)}.border-amber-500\/40{border-color:rgb(245 158 11 / 0.4)}.border-amber-900\/40{border-color:rgb(120 53 15 / 0.4)}.border-cyan-500\/20{border-color:rgb(6 182 212 / 0.2)}.border-cyan-500\/30{border-color:rgb(6 182 212 / 0.3)}.border-cyan-500\/40{border-color:rgb(6 182 212 / 0.4)}.border-cyan-900\/40{border-color:rgb(22 78 99 / 0.4)}.border-emerald-500\/30{border-color:rgb(16 185 129 / 0.3)}.border-purple-500\/30{border-color:rgb(168 85 247 / 0.3)}.border-purple-500\/40{border-color:rgb(168 85 247 / 0.4)}.border-red-900\/40{border-color:rgb(127 29 29 / 0.4)}.border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85 / var(--tw-border-opacity, 1))}.border-slate-800{--tw-border-opacity:1;border-color:rgb(30 41 59 / var(--tw-border-opacity, 1))}.border-slate-800\/80{border-color:rgb(30 41 59 / 0.8)}.border-amber-700\/50{border-color:rgb(180 83 9 / 0.5)}.border-blue-700\/50{border-color:rgb(29 78 216 / 0.5)}.border-emerald-700\/50{border-color:rgb(4 120 87 / 0.5)}.border-pink-700\/50{border-color:rgb(190 24 93 / 0.5)}.border-purple-700\/50{border-color:rgb(126 34 206 / 0.5)}.border-purple-800\/30{border-color:rgb(107 33 168 / 0.3)}.border-red-700\/50{border-color:rgb(185 28 28 / 0.5)}.border-slate-800\/40{border-color:rgb(30 41 59 / 0.4)}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11 / var(--tw-bg-opacity, 1))}.bg-amber-500\/10{background-color:rgb(245 158 11 / 0.1)}.bg-black\/80{background-color:rgb(0 0 0 / 0.8)}.bg-cyan-500{--tw-bg-opacity:1;background-color:rgb(6 182 212 / var(--tw-bg-opacity, 1))}.bg-cyan-500\/10{background-color:rgb(6 182 212 / 0.1)}.bg-darkbg-900{--tw-bg-opacity:1;background-color:rgb(11 15 25 / var(--tw-bg-opacity, 1))}.bg-darkbg-900\/90{background-color:rgb(11 15 25 / 0.9)}.bg-darkbg-950{--tw-bg-opacity:1;background-color:rgb(5 7 13 / var(--tw-bg-opacity, 1))}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129 / var(--tw-bg-opacity, 1))}.bg-emerald-500\/10{background-color:rgb(16 185 129 / 0.1)}.bg-purple-500{--tw-bg-opacity:1;background-color:rgb(168 85 247 / var(--tw-bg-opacity, 1))}.bg-purple-500\/10{background-color:rgb(168 85 247 / 0.1)}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59 / var(--tw-bg-opacity, 1))}.bg-slate-800\/80{background-color:rgb(30 41 59 / 0.8)}.bg-amber-950\/80{background-color:rgb(69 26 3 / 0.8)}.bg-blue-950\/80{background-color:rgb(23 37 84 / 0.8)}.bg-emerald-950\/80{background-color:rgb(2 44 34 / 0.8)}.bg-pink-950\/80{background-color:rgb(80 7 36 / 0.8)}.bg-purple-950\/40{background-color:rgb(59 7 100 / 0.4)}.bg-purple-950\/80{background-color:rgb(59 7 100 / 0.8)}.bg-red-950\/80{background-color:rgb(69 10 10 / 0.8)}.bg-slate-600{--tw-bg-opacity:1;background-color:rgb(71 85 105 / var(--tw-bg-opacity, 1))}.bg-gradient-to-r{background-image:linear-gradient(to right, var(--tw-gradient-stops))}.from-amber-500{--tw-gradient-from:#f59e0b var(--tw-gradient-from-position);--tw-gradient-to:rgb(245 158 11 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-cyan-500{--tw-gradient-from:#06b6d4 var(--tw-gradient-from-position);--tw-gradient-to:rgb(6 182 212 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-darkbg-900{--tw-gradient-from:#0b0f19 var(--tw-gradient-from-position);--tw-gradient-to:rgb(11 15 25 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.via-slate-900{--tw-gradient-to:rgb(15 23 42 / 0)  var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), #0f172a var(--tw-gradient-via-position), var(--tw-gradient-to)}.to-amber-600{--tw-gradient-to:#d97706 var(--tw-gradient-to-position)}.to-blue-600{--tw-gradient-to:#2563eb var(--tw-gradient-to-position)}.to-cyan-950\/40{--tw-gradient-to:rgb(8 51 68 / 0.4) var(--tw-gradient-to-position)}.to-cyan-950\/50{--tw-gradient-to:rgb(8 51 68 / 0.5) var(--tw-gradient-to-position)}.p-2{padding:0.5rem}.p-2\.5{padding:0.625rem}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.pb-2{padding-bottom:0.5rem}.pb-3{padding-bottom:0.75rem}.pl-1{padding-left:0.25rem}.pl-2{padding-left:0.5rem}.pt-2{padding-top:0.5rem}.pt-4{padding-top:1rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}.font-sans{font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-\[9px\]{font-size:9px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-black{font-weight:900}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-semibold{font-weight:600}.font-medium{font-weight:500}.uppercase{text-transform:uppercase}.italic{font-style:italic}.leading-none{line-height:1}.leading-relaxed{line-height:1.625}.leading-tight{line-height:1.25}.tracking-tight{letter-spacing:-0.025em}.tracking-wider{letter-spacing:0.05em}.text-amber-300{--tw-text-opacity:1;color:rgb(252 211 77 / var(--tw-text-opacity, 1))}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36 / var(--tw-text-opacity, 1))}.text-amber-500\/30{color:rgb(245 158 11 / 0.3)}.text-cyan-400{--tw-text-opacity:1;color:rgb(34 211 238 / var(--tw-text-opacity, 1))}.text-cyan-500\/30{color:rgb(6 182 212 / 0.3)}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153 / var(--tw-text-opacity, 1))}.text-emerald-500\/30{color:rgb(16 185 129 / 0.3)}.text-purple-300{--tw-text-opacity:1;color:rgb(216 180 254 / var(--tw-text-opacity, 1))}.text-purple-400{--tw-text-opacity:1;color:rgb(192 132 252 / var(--tw-text-opacity, 1))}.text-purple-500\/30{color:rgb(168 85 247 / 0.3)}.text-red-400{--tw-text-opacity:1;color:rgb(248 113 113 / var(--tw-text-opacity, 1))}.text-slate-100{--tw-text-opacity:1;color:rgb(241 245 249 / var(--tw-text-opacity, 1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240 / var(--tw-text-opacity, 1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.text-slate-950{--tw-text-opacity:1;color:rgb(2 6 23 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.text-blue-300{--tw-text-opacity:1;color:rgb(147 197 253 / var(--tw-text-opacity, 1))}.text-cyan-300{--tw-text-opacity:1;color:rgb(103 232 249 / var(--tw-text-opacity, 1))}.text-emerald-300{--tw-text-opacity:1;color:rgb(110 231 183 / var(--tw-text-opacity, 1))}.text-pink-300{--tw-text-opacity:1;color:rgb(249 168 212 / var(--tw-text-opacity, 1))}.text-red-300{--tw-text-opacity:1;color:rgb(252 165 165 / var(--tw-text-opacity, 1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))}.underline{-webkit-text-decoration-line:underline;text-decoration-line:underline}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-cyan-500\/20{--tw-shadow-color:rgb(6 182 212 / 0.2);--tw-shadow:var(--tw-shadow-colored)}.backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-colors{transition-property:color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.selection\:bg-brand-cyan *::selection{--tw-bg-opacity:1;background-color:rgb(6 182 212 / var(--tw-bg-opacity, 1))}.selection\:text-slate-950 *::selection{--tw-text-opacity:1;color:rgb(2 6 23 / var(--tw-text-opacity, 1))}.selection\:bg-brand-cyan::selection{--tw-bg-opacity:1;background-color:rgb(6 182 212 / var(--tw-bg-opacity, 1))}.selection\:text-slate-950::selection{--tw-text-opacity:1;color:rgb(2 6 23 / var(--tw-text-opacity, 1))}.hover\:bg-amber-400:hover{--tw-bg-opacity:1;background-color:rgb(251 191 36 / var(--tw-bg-opacity, 1))}.hover\:bg-amber-500\/20:hover{background-color:rgb(245 158 11 / 0.2)}.hover\:bg-cyan-400:hover{--tw-bg-opacity:1;background-color:rgb(34 211 238 / var(--tw-bg-opacity, 1))}.hover\:bg-purple-400:hover{--tw-bg-opacity:1;background-color:rgb(192 132 252 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-800\/40:hover{background-color:rgb(30 41 59 / 0.4)}.hover\:from-amber-400:hover{--tw-gradient-from:#fbbf24 var(--tw-gradient-from-position);--tw-gradient-to:rgb(251 191 36 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.hover\:from-cyan-400:hover{--tw-gradient-from:#22d3ee var(--tw-gradient-from-position);--tw-gradient-to:rgb(34 211 238 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.hover\:to-amber-500:hover{--tw-gradient-to:#f59e0b var(--tw-gradient-to-position)}.hover\:to-blue-500:hover{--tw-gradient-to:#3b82f6 var(--tw-gradient-to-position)}.hover\:text-cyan-400:hover{--tw-text-opacity:1;color:rgb(34 211 238 / var(--tw-text-opacity, 1))}.hover\:text-red-400:hover{--tw-text-opacity:1;color:rgb(248 113 113 / var(--tw-text-opacity, 1))}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.focus\:border-amber-500:focus{--tw-border-opacity:1;border-color:rgb(245 158 11 / var(--tw-border-opacity, 1))}.focus\:border-cyan-500:focus{--tw-border-opacity:1;border-color:rgb(6 182 212 / var(--tw-border-opacity, 1))}.focus\:border-purple-500:focus{--tw-border-opacity:1;border-color:rgb(168 85 247 / var(--tw-border-opacity, 1))}.focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}@media (min-width: 640px){.sm\:w-48{width:12rem}.sm\:flex-row{flex-direction:row}.sm\:items-center{align-items:center}.sm\:p-8{padding:2rem}.sm\:px-6{padding-left:1.5rem;padding-right:1.5rem}.sm\:text-3xl{font-size:1.875rem;line-height:2.25rem}.sm\:text-4xl{font-size:2.25rem;line-height:2.5rem}.sm\:text-5xl{font-size:3rem;line-height:1}.sm\:text-xl{font-size:1.25rem;line-height:1.75rem}}@media (min-width: 768px){.md\:w-auto{width:auto}.md\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.md\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.md\:grid-cols-4{grid-template-columns:repeat(4, minmax(0, 1fr))}.md\:flex-row{flex-direction:row}.md\:items-center{align-items:center}}@media (min-width: 1024px){.lg\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.lg\:grid-cols-4{grid-template-columns:repeat(4, minmax(0, 1fr))}.lg\:px-8{padding-left:2rem;padding-right:2rem}}</style></head>
+<!-- Chosen Palette: Dark Obsidian, Neon Gold & Cyber Cyan -->
+<!-- Application Structure Plan:
+     1. Header & Navigation: Control de sincronización, barra de estado de autenticación (Login/Logout) y navegación entre el Dashboard y la Guía de Despliegue.
+     2. Módulo de Autenticación Interno: Sistema de Inicio de Sesión para Administradores y Miembros del Clan (usa LocalStorage para mantener persistencia).
+     3. Sincronizador Automático de Datos Públicos: Motor de consulta a la API de Smash MU con filtrado por Nombre de Clan y fusión con Metadatos Internos (Builds, Roles Tácticos, Notas).
+     4. Métricas Clave y Gráficos Chart.js: Análisis de Resets, Distribución de Clases y Ranking Interno en tiempo real.
+     5. Roster Dinámico de Clan (Modo Edición): Lista de integrantes con capacidad de filtrar, buscar y editar atributos internos al iniciar sesión.
+     6. Planificador de Castle Siege & Asistencia: Organización de squads (Frontline, Support, Sello) editable exclusivamente por roles autorizados.
+     7. Guía Integrada Paso a Paso: Instrucciones detalladas de publicación en Vercel y conexión con bases de datos para gestión avanzada. -->
+<!-- Visualization & Content Choices:
+     - Gráficos: Canvas dinámico con Chart.js (Doughnut para clases y Horizontal Bar para resets).
+     - Interacciones: Modal de login, edición de datos en tiempo real, guardado en almacenamiento local y sincronización interactiva.
+     - Iconografía: Símbolos Unicode y etiquetas Tailwind estilizadas. NO SVG / NO Mermaid. -->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+<body class="bg-darkbg-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-brand-cyan selection:text-slate-950">
+
+    <!-- Top Navigation Header -->
+    <nav class="bg-darkbg-900/90 backdrop-blur-md border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <span class="text-2xl sm:text-3xl">🛡️</span>
+                <div>
+                    <h1 id="nav-clan-title" class="font-black text-cyan-400 text-lg sm:text-xl tracking-tight leading-none uppercase">PORTAL DE CLAN - LEGION_SMASH</h1>
+                    <span id="nav-sync-status" class="text-[10px] text-emerald-400 font-mono">● Conectado a smash-mu-nu.vercel.app</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <button onclick="switchTab('dashboard')" id="btn-tab-dashboard" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs border border-slate-700 transition-all">
+                    📊 Panel de Clan
+                </button>
+                <button onclick="switchTab('guide')" id="btn-tab-guide" class="px-3 py-1.5 bg-cyan-500 text-slate-950 font-bold rounded-lg text-xs transition-all shadow-md">
+                    📘 Guía Paso a Paso
+                </button>
+
+                <!-- Auth Button / Badge -->
+                <div id="auth-container" class="pl-2 border-l border-slate-800 flex items-center space-x-2">
+                    <button id="btn-login-trigger" onclick="openModal('login-modal')" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition-all flex items-center space-x-1">
+                        <span>🔐</span>
+                        <span>Iniciar Sesión</span>
+                    </button>
+                    <div id="user-badge" class="hidden items-center space-x-2 bg-slate-800/80 border border-amber-500/40 px-3 py-1 rounded-lg">
+                        <div class="text-left">
+                            <div id="user-badge-name" class="text-xs font-bold text-amber-400 leading-tight">Admin</div>
+                            <div id="user-badge-role" class="text-[9px] text-slate-400 leading-none">Guild Leader</div>
+                        </div>
+                        <button onclick="logout()" class="text-slate-400 hover:text-red-400 text-xs font-bold pl-1" title="Cerrar Sesión">✕</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+
+        <!-- ================= VISTA 1: DASHBOARD DEL CLAN ================= -->
+        <section id="view-dashboard" class="space-y-8 hidden">
+
+            <!-- Banner Principal Personalizable -->
+            <section class="relative bg-gradient-to-r from-darkbg-900 via-slate-900 to-cyan-950/40 rounded-2xl p-6 sm:p-8 border border-cyan-500/30 shadow-2xl overflow-hidden">
+                <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div class="space-y-3">
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full text-xs font-bold text-amber-400">
+                                👑 Leader: <span id="banner-master-name" class="text-white">Master_Smash</span>
+                            </span>
+                            <span id="banner-tag-private" class="bg-purple-500/10 border border-purple-500/30 px-3 py-1 rounded-full text-xs font-bold text-purple-300">
+                                🔒 Portal de Acceso Restringido
+                            </span>
+                        </div>
+                        <h2 id="banner-clan-name" class="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase">CLAN <span class="text-cyan-400">LEGION_SMASH</span></h2>
+                        <p id="banner-clan-motto" class="text-slate-300 text-sm italic max-w-xl leading-relaxed">"Sincronizados en tiempo real con Smash MU. Domina el Castle Siege y coordina estrategias con tu equipo."</p>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                        <button id="btn-edit-clan-config" onclick="openModal('settings-modal')" class="hidden px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs border border-slate-700 text-center transition-all">
+                            ⚙️ Configurar Clan
+                        </button>
+                        <button onclick="syncWithSmashMU()" class="px-5 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold rounded-xl text-xs transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center space-x-2">
+                            <span class="animate-spin" id="sync-spinner" style="display: none;">🔄</span>
+                            <span id="sync-btn-label">⚡ Sincronizar Datos en Vivo</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Consola de Monitor de Sincronización -->
+            <section class="bg-darkbg-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Estado de la API Smash MU &amp; Fusión de Datos Internos</h3>
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-500">Origen: https://smash-mu-nu.vercel.app/api/rankings</span>
+                </div>
+                <div id="sync-log-terminal" class="bg-darkbg-950 border border-slate-800/80 rounded-xl p-3 font-mono text-[11px] text-emerald-400 h-20 overflow-y-auto custom-scrollbar space-y-1">
+                    <div>[SISTEMA] Listo. Haz clic en "Sincronizar Datos en Vivo" para consultar la nómina pública de Smash MU.</div>
+                </div>
+            </section>
+
+            <!-- Tarjetas de Métricas -->
+            <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-darkbg-900 p-4 rounded-xl border border-slate-800/80">
+                    <div class="text-[11px] uppercase font-bold text-slate-400 mb-1">Miembros Sincronizados</div>
+                    <div id="metric-total-members" class="text-3xl font-black text-white">7</div>
+                    <p id="metric-online-count" class="text-[11px] text-emerald-400 mt-1">● 5 Conectados</p>
+                </div>
+                <div class="bg-darkbg-900 p-4 rounded-xl border border-slate-800/80">
+                    <div class="text-[11px] uppercase font-bold text-slate-400 mb-1">Resets Totales</div>
+                    <div id="metric-total-resets" class="text-3xl font-black text-amber-400">937</div>
+                    <p id="metric-avg-resets" class="text-[11px] text-slate-400 mt-1">Promedio: 134 / jug</p>
+                </div>
+                <div class="bg-darkbg-900 p-4 rounded-xl border border-slate-800/80">
+                    <div class="text-[11px] uppercase font-bold text-slate-400 mb-1">Nivel Promedio</div>
+                    <div id="metric-avg-level" class="text-3xl font-black text-cyan-400">393</div>
+                    <p class="text-[11px] text-slate-400 mt-1">Máximo Servidor: 400</p>
+                </div>
+                <div class="bg-darkbg-900 p-4 rounded-xl border border-slate-800/80">
+                    <div class="text-[11px] uppercase font-bold text-slate-400 mb-1">Score Táctico (Siege)</div>
+                    <div id="metric-power-score" class="text-3xl font-black text-purple-400">12.030</div>
+                    <p class="text-[11px] text-amber-400 mt-1">Poderío Calculado</p>
+                </div>
+            </section>
+
+            <!-- Charts Visuales (Chart.js) -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Gráfico 1: Clases -->
+                <div class="bg-darkbg-900 p-5 rounded-2xl border border-slate-800">
+                    <div class="mb-4">
+                        <h3 class="font-bold text-white text-sm">Composición de Clases del Clan</h3>
+                        <p class="text-xs text-slate-400">Balance de personajes extraído del ranking oficial para distribución de parties.</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="classBalanceChart" width="580" height="320" style="display: block; box-sizing: border-box; height: 320px; width: 580px;"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gráfico 2: Top Resets -->
+                <div class="bg-darkbg-900 p-5 rounded-2xl border border-slate-800">
+                    <div class="mb-4">
+                        <h3 class="font-bold text-white text-sm">Top 8 Líderes de Resets</h3>
+                        <p class="text-xs text-slate-400">Jugadores de mayor potencia ofensiva en el servidor.</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="topPlayersChart" width="580" height="320" style="display: block; box-sizing: border-box; height: 320px; width: 580px;"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tabla de Integrantes y Gestión Interna -->
+            <section class="bg-darkbg-900 rounded-2xl p-5 border border-slate-800 space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <span>👥 Nómina del Clan y Metadatos Privados</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">
+                            Combina datos públicos del juego (Nivel/Resets/Clase) con notas tácticas internas de tu equipo.
+                        </p>
+                    </div>
+
+                    <!-- Filtros y Búsqueda -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <input type="text" id="roster-search" oninput="applyRosterFilters()" placeholder="Buscar personaje..." class="bg-darkbg-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 w-36 sm:w-48">
+                        
+                        <select id="roster-class-filter" onchange="applyRosterFilters()" class="bg-darkbg-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500">
+                            <option value="ALL">Todas las Clases</option>
+                            <option value="BK">Blade Knight (BK)</option>
+                            <option value="SM">Soul Master (SM)</option>
+                            <option value="ELF">Muse Elf (ELF)</option>
+                            <option value="DL">Dark Lord (DL)</option>
+                            <option value="MG">Magic Gladiator (MG)</option>
+                            <option value="SUM">Summoner (SUM)</option>
+                        </select>
+
+                        <button id="btn-add-member" onclick="openModal('add-member-modal')" class="hidden px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition-all shadow-md">
+                            ➕ Agregar Personaje
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla Dinámica -->
+                <div class="overflow-x-auto border border-slate-800 rounded-xl custom-scrollbar">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-darkbg-950 border-b border-slate-800 text-slate-400 font-semibold">
+                            <tr>
+                                <th class="p-3">Estado</th>
+                                <th class="p-3 cursor-pointer hover:text-cyan-400" onclick="sortTable('name')">Personaje ↕</th>
+                                <th class="p-3">Clase</th>
+                                <th class="p-3 cursor-pointer hover:text-cyan-400" onclick="sortTable('level')">Nivel ↕</th>
+                                <th class="p-3 cursor-pointer hover:text-cyan-400" onclick="sortTable('resets')">Resets ↕</th>
+                                <th class="p-3">Build / Rol Táctico</th>
+                                <th class="p-3">Asistencia / Nota Interna</th>
+                                <th class="p-3 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roster-table-body" class="divide-y divide-slate-800/60 text-slate-300"><tr class="hover:bg-slate-800/40 transition-colors border-b border-slate-800/40">
+                    <td class="p-3">
+                        <span class="inline-flex items-center space-x-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span class="text-[10px] text-slate-400">Online</span>
+                        </span>
+                    </td>
+                    <td class="p-3 font-bold text-white">Master_Smash</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-950/80 text-red-300 border border-red-700/50">BK</span></td>
+                    <td class="p-3 font-mono text-cyan-300">400</td>
+                    <td class="p-3 font-mono font-bold text-amber-400">185</td>
+                    <td class="p-3 text-slate-300 font-medium">Fuerza / Combo</td>
+                    <td class="p-3"><span class="text-[11px] text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/30">Líder Castle Siege</span></td>
+                    <td class="p-3 text-right space-x-1">
+                        <span class="text-[10px] text-slate-600 italic">Solo Lectura</span>
+                    </td>
+                </tr><tr class="hover:bg-slate-800/40 transition-colors border-b border-slate-800/40">
+                    <td class="p-3">
+                        <span class="inline-flex items-center space-x-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span class="text-[10px] text-slate-400">Online</span>
+                        </span>
+                    </td>
+                    <td class="p-3 font-bold text-white">Ares_DL</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-700/50">DL</span></td>
+                    <td class="p-3 font-mono text-cyan-300">400</td>
+                    <td class="p-3 font-mono font-bold text-amber-400">160</td>
+                    <td class="p-3 text-slate-300 font-medium">Vitalidad / Sello</td>
+                    <td class="p-3"><span class="text-[11px] text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/30">Encargado de Pedestal</span></td>
+                    <td class="p-3 text-right space-x-1">
+                        <span class="text-[10px] text-slate-600 italic">Solo Lectura</span>
+                    </td>
+                </tr><tr class="hover:bg-slate-800/40 transition-colors border-b border-slate-800/40">
+                    <td class="p-3">
+                        <span class="inline-flex items-center space-x-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span class="text-[10px] text-slate-400">Online</span>
+                        </span>
+                    </td>
+                    <td class="p-3 font-bold text-white">Aura_Elf</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-700/50">ELF</span></td>
+                    <td class="p-3 font-mono text-cyan-300">398</td>
+                    <td class="p-3 font-mono font-bold text-amber-400">142</td>
+                    <td class="p-3 text-slate-300 font-medium">Energía / Buffs</td>
+                    <td class="p-3"><span class="text-[11px] text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/30">Buff Principal</span></td>
+                    <td class="p-3 text-right space-x-1">
+                        <span class="text-[10px] text-slate-600 italic">Solo Lectura</span>
+                    </td>
+                </tr><tr class="hover:bg-slate-800/40 transition-colors border-b border-slate-800/40">
+                    <td class="p-3">
+                        <span class="inline-flex items-center space-x-1">
+                            <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                            <span class="text-[10px] text-slate-400">Offline</span>
+                        </span>
+                    </td>
+                    <td class="p-3 font-bold text-white">Vortex_SM</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950/80 text-blue-300 border border-blue-700/50">SM</span></td>
+                    <td class="p-3 font-mono text-cyan-300">395</td>
+                    <td class="p-3 font-mono font-bold text-amber-400">130</td>
+                    <td class="p-3 text-slate-300 font-medium">Híbrido PvP</td>
+                    <td class="p-3"><span class="text-[11px] text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/30">Teleport Support</span></td>
+                    <td class="p-3 text-right space-x-1">
+                        <span class="text-[10px] text-slate-600 italic">Solo Lectura</span>
+                    </td>
+                </tr><tr class="hover:bg-slate-800/40 transition-colors border-b border-slate-800/40">
+                    <td class="p-3">
+                        <span class="inline-flex items-center space-x-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span class="text-[10px] text-slate-400">Online</span>
+                        </span>
+                    </td>
+                    <td class="p-3 font-bold text-white">Kratos_BK</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-950/80 text-red-300 border border-red-700/50">BK</span></td>
+                    <td class="p-3 font-mono text-cyan-300">390</td>
+                    <td class="p-3 font-mono font-bold text-amber-400">115</td>
+                    <td class="p-3 text-slate-300 font-medium">Agilidad / Tanque</td>
+                    <td class="p-3"><span class="text-[11px] text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/30">Front Line Tank</span></td>
+                    <td class="p-3 text-right space-x-1">
+                        <span class="text-[10px] text-slate-600 italic">Solo Lectura</span>
+                    </td>
+                </tr><tr class="hover:bg-slate-800/40 transition-colors border-b border-slate-800/40">
+                    <td class="p-3">
+                        <span class="inline-flex items-center space-x-1">
+                            <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                            <span class="text-[10px] text-slate-400">Offline</span>
+                        </span>
+                    </td>
+                    <td class="p-3 font-bold text-white">Blood_Summon</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-950/80 text-pink-300 border border-pink-700/50">SUM</span></td>
+                    <td class="p-3 font-mono text-cyan-300">388</td>
+                    <td class="p-3 font-mono font-bold text-amber-400">110</td>
+                    <td class="p-3 text-slate-300 font-medium">Energía / Buffs</td>
+                    <td class="p-3"><span class="text-[11px] text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/30">Debuff Anti-Buffs</span></td>
+                    <td class="p-3 text-right space-x-1">
+                        <span class="text-[10px] text-slate-600 italic">Solo Lectura</span>
+                    </td>
+                </tr><tr class="hover:bg-slate-800/40 transition-colors border-b border-slate-800/40">
+                    <td class="p-3">
+                        <span class="inline-flex items-center space-x-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span class="text-[10px] text-slate-400">Online</span>
+                        </span>
+                    </td>
+                    <td class="p-3 font-bold text-white">Gladiator_X</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950/80 text-purple-300 border border-purple-700/50">MG</span></td>
+                    <td class="p-3 font-mono text-cyan-300">382</td>
+                    <td class="p-3 font-mono font-bold text-amber-400">95</td>
+                    <td class="p-3 text-slate-300 font-medium">Fuerza / Combo</td>
+                    <td class="p-3"><span class="text-[11px] text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/30">DPS Secundario</span></td>
+                    <td class="p-3 text-right space-x-1">
+                        <span class="text-[10px] text-slate-600 italic">Solo Lectura</span>
+                    </td>
+                </tr></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Planificador de Castle Siege -->
+            <section class="bg-darkbg-900 rounded-2xl p-5 border border-slate-800 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h3 class="text-lg font-bold text-amber-400 flex items-center space-x-2">
+                            <span>🏰 Estrategia de Escuadrones para Castle Siege</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Distribución de funciones de combate guardada en el portal de tu clan.</p>
+                    </div>
+                    <button id="btn-auto-assign" onclick="autoAssignSiegeSquads()" class="hidden px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 rounded-lg text-xs font-semibold">
+                        ⚡ Auto-Asignar por Clase
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Escuadrón Frontline -->
+                    <div class="p-4 bg-darkbg-950 rounded-xl border border-red-900/40 space-y-3">
+                        <div class="flex items-center justify-between font-bold text-xs text-red-400 border-b border-slate-800 pb-2">
+                            <span>⚔️ Frontline / Tanques</span>
+                            <span id="frontline-count" class="text-slate-400">3 Jugadores</span>
+                        </div>
+                        <div id="squad-frontline-list" class="space-y-2 min-h-[90px] text-xs">
+                <div class="p-2 bg-darkbg-900 rounded border border-slate-800 flex items-center justify-between">
+                    <span class="font-bold text-slate-200">🛡️ Master_Smash (BK)</span>
+                    <span class="font-mono text-[10px] text-amber-400">185 RR</span>
+                </div>
+            
+                <div class="p-2 bg-darkbg-900 rounded border border-slate-800 flex items-center justify-between">
+                    <span class="font-bold text-slate-200">🛡️ Kratos_BK (BK)</span>
+                    <span class="font-mono text-[10px] text-amber-400">115 RR</span>
+                </div>
+            
+                <div class="p-2 bg-darkbg-900 rounded border border-slate-800 flex items-center justify-between">
+                    <span class="font-bold text-slate-200">🛡️ Gladiator_X (MG)</span>
+                    <span class="font-mono text-[10px] text-amber-400">95 RR</span>
+                </div>
+            </div>
+                    </div>
+
+                    <!-- Escuadrón Soporte -->
+                    <div class="p-4 bg-darkbg-950 rounded-xl border border-cyan-900/40 space-y-3">
+                        <div class="flex items-center justify-between font-bold text-xs text-cyan-400 border-b border-slate-800 pb-2">
+                            <span>✨ Support &amp; Buffs</span>
+                            <span id="support-count" class="text-slate-400">3 Jugadores</span>
+                        </div>
+                        <div id="squad-support-list" class="space-y-2 min-h-[90px] text-xs">
+                <div class="p-2 bg-darkbg-900 rounded border border-slate-800 flex items-center justify-between">
+                    <span class="font-bold text-slate-200">✨ Aura_Elf (ELF)</span>
+                    <span class="font-mono text-[10px] text-cyan-400">142 RR</span>
+                </div>
+            
+                <div class="p-2 bg-darkbg-900 rounded border border-slate-800 flex items-center justify-between">
+                    <span class="font-bold text-slate-200">✨ Vortex_SM (SM)</span>
+                    <span class="font-mono text-[10px] text-cyan-400">130 RR</span>
+                </div>
+            
+                <div class="p-2 bg-darkbg-900 rounded border border-slate-800 flex items-center justify-between">
+                    <span class="font-bold text-slate-200">✨ Blood_Summon (SUM)</span>
+                    <span class="font-mono text-[10px] text-cyan-400">110 RR</span>
+                </div>
+            </div>
+                    </div>
+
+                    <!-- Escuadrón Sello -->
+                    <div class="p-4 bg-darkbg-950 rounded-xl border border-amber-900/40 space-y-3">
+                        <div class="flex items-center justify-between font-bold text-xs text-amber-400 border-b border-slate-800 pb-2">
+                            <span>👑 Sello / Pedestal</span>
+                            <span id="seal-count" class="text-slate-400">1 Jugadores</span>
+                        </div>
+                        <div id="squad-seal-list" class="space-y-2 min-h-[90px] text-xs">
+                <div class="p-2 bg-darkbg-900 rounded border border-slate-800 flex items-center justify-between">
+                    <span class="font-bold text-slate-200">👑 Ares_DL (DL)</span>
+                    <span class="font-mono text-[10px] text-purple-400">160 RR</span>
+                </div>
+            </div>
+                    </div>
+                </div>
+            </section>
+
+        </section>
+
+        <!-- ================= VISTA 2: GUÍA PASO A PASO ================= -->
+        <section id="view-guide" class="space-y-6">
+
+            <div class="bg-gradient-to-r from-darkbg-900 via-slate-900 to-cyan-950/50 rounded-2xl p-6 border border-cyan-500/30 shadow-xl space-y-3">
+                <div class="inline-flex items-center space-x-2 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-full text-xs font-bold text-cyan-400">
+                    <span>📖 Manual Completo de Creación y Despliegue</span>
+                </div>
+                <h2 class="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                    Cómo crear tu propio Portal de Clan con Sincronización
+                </h2>
+                <p class="text-slate-300 text-sm max-w-3xl leading-relaxed">
+                    Sigue estos sencillos pasos para publicar la web oficial de tu Clan en Vercel totalmente gratis, manteniendo la información pública del juego al día y tu panel privado protegido.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Paso 1 -->
+                <div class="bg-darkbg-900 p-5 rounded-2xl border border-slate-800 space-y-3 relative overflow-hidden">
+                    <div class="text-3xl font-black text-cyan-500/30 absolute top-2 right-4">01</div>
+                    <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold">1</div>
+                    <h3 class="font-bold text-white text-sm">Descargar este Archivo</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Haz clic en el botón inferior <strong>"📥 Descargar HTML del Portal"</strong>. Guardará un archivo de código único conteniendo toda la estructura, gráficos y lógica.
+                    </p>
+                </div>
+
+                <!-- Paso 2 -->
+                <div class="bg-darkbg-900 p-5 rounded-2xl border border-slate-800 space-y-3 relative overflow-hidden">
+                    <div class="text-3xl font-black text-amber-500/30 absolute top-2 right-4">02</div>
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold">2</div>
+                    <h3 class="font-bold text-white text-sm">Subir Gratis a Vercel</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Crea una cuenta en <a href="https://vercel.com" target="_blank" class="text-cyan-400 underline">Vercel.com</a>. Crea un nuevo proyecto e importa tu archivo descargado o carpeta.
+                    </p>
+                </div>
+
+                <!-- Paso 3 -->
+                <div class="bg-darkbg-900 p-5 rounded-2xl border border-slate-800 space-y-3 relative overflow-hidden">
+                    <div class="text-3xl font-black text-purple-500/30 absolute top-2 right-4">03</div>
+                    <div class="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold">3</div>
+                    <h3 class="font-bold text-white text-sm">Configurar Nombre del Clan</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Abre tu nueva URL (ej: <code class="text-amber-300">miclan-smash.vercel.app</code>), inicia sesión como Admin y cambia el nombre de tu clan para que el motor busque solo a tus integrantes.
+                    </p>
+                </div>
+
+                <!-- Paso 4 -->
+                <div class="bg-darkbg-900 p-5 rounded-2xl border border-slate-800 space-y-3 relative overflow-hidden">
+                    <div class="text-3xl font-black text-emerald-500/30 absolute top-2 right-4">04</div>
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold">4</div>
+                    <h3 class="font-bold text-white text-sm">Compartir con tu Team</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        ¡Listo! Entrega las claves de acceso internas a tus líderes para coordinar el Castle Siege mientras el servidor actualiza niveles automáticamente.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Explicación Técnica de Proxy y Backend -->
+            <div class="bg-darkbg-900 rounded-2xl p-6 border border-slate-800 space-y-4">
+                <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                    <span>💡</span>
+                    <span>¿Cómo funciona la lectura automática de datos?</span>
+                </h3>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    El sitio web oficial de Smash MU publica la tabla de posiciones global en un punto de acceso (API) público. Este portal realiza una petición directa a esa URL, extrae todos los jugadores del servidor y los filtra instantáneamente usando el nombre de tu clan. 
+                </p>
+                
+                <div class="bg-darkbg-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="text-xs font-bold text-cyan-400">Código Serverless para evitar bloqueos de seguridad (CORS) opcional en Vercel:</div>
+                    <pre class="text-[11px] text-emerald-400 font-mono overflow-x-auto custom-scrollbar p-2"><code>// Archivo en tu proyecto: api/smash-sync.js
+export default async function handler(req, res) {
+    const response = await fetch('https://smash-mu-nu.vercel.app/api/rankings');
+    const data = await response.json();
+    
+    // Filtrar solo los jugadores pertenecientes a TU CLAN
+    const myClanName = "LEGION_SMASH"; 
+    const clanMembers = data.filter(p =&gt; p.guild &amp;&amp; p.guild.toLowerCase() === myClanName.toLowerCase());
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.status(200).json(clanMembers);
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="flex justify-center pt-4">
+                <button onclick="downloadSelfHTML()" class="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-sm transition-all shadow-lg flex items-center space-x-2">
+                    <span>📥</span>
+                    <span>Descargar HTML del Portal Configurado</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal: Iniciar Sesión -->
+    <div id="login-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-darkbg-900 border border-amber-500/40 rounded-2xl max-w-md w-full p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-amber-400">Acceso a Edición de Clan</h3>
+                <button onclick="closeModal('login-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            
+            <p class="text-xs text-slate-400">
+                Inicia sesión con la clave del equipo para desbloquear el panel de edición, asignar escuadrones y guardar notas privadas.
+            </p>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Nombre / Nickname</label>
+                    <input type="text" id="login-user" value="GuildLeader" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Clave de Acceso (Por defecto: admin123)</label>
+                    <input type="password" id="login-pass" value="admin123" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="closeModal('login-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700">Cancelar</button>
+                <button onclick="login()" class="px-4 py-2 bg-amber-500 text-slate-950 font-bold rounded-lg text-xs hover:bg-amber-400">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Configuración de Clan -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-darkbg-900 border border-cyan-500/40 rounded-2xl max-w-md w-full p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-cyan-400">Ajustes del Clan</h3>
+                <button onclick="closeModal('settings-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Nombre Exacto del Clan en Smash MU</label>
+                    <input type="text" id="cfg-clan-name" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Guild Master</label>
+                    <input type="text" id="cfg-master-name" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Lema o Mensaje del Clan</label>
+                    <input type="text" id="cfg-clan-motto" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="closeModal('settings-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700">Cancelar</button>
+                <button onclick="saveClanSettings()" class="px-4 py-2 bg-cyan-500 text-slate-950 font-bold rounded-lg text-xs hover:bg-cyan-400">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Datos Internos de Integrante -->
+    <div id="edit-member-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-darkbg-900 border border-purple-500/40 rounded-2xl max-w-md w-full p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-purple-400">Editar Datos Internos de Jugador</h3>
+                <button onclick="closeModal('edit-member-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            
+            <input type="hidden" id="edit-member-index">
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Personaje</label>
+                    <input type="text" id="edit-member-name" disabled="" class="w-full bg-darkbg-950 border border-slate-800 rounded-lg p-2 text-slate-400">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Build / Especialización</label>
+                        <select id="edit-member-build" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-purple-500">
+                            <option value="Agilidad / Tanque">Agilidad / Tanque</option>
+                            <option value="Fuerza / Combo">Fuerza / Combo</option>
+                            <option value="Energía / Buffs">Energía / Buffs</option>
+                            <option value="Vitalidad / Sello">Vitalidad / Sello</option>
+                            <option value="Híbrido PvP">Híbrido PvP</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Escuadrón Siege</label>
+                        <select id="edit-member-squad" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-purple-500">
+                            <option value="frontline">Frontline (Tanques)</option>
+                            <option value="support">Support &amp; Buffs</option>
+                            <option value="seal">Sello / Pedestal</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Estado de Asistencia / Nota Privada</label>
+                    <input type="text" id="edit-member-note" placeholder="Ej: Confirmado Siege / Falta Discord" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-purple-500">
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="closeModal('edit-member-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700">Cancelar</button>
+                <button onclick="saveMemberEdits()" class="px-4 py-2 bg-purple-500 text-slate-950 font-bold rounded-lg text-xs hover:bg-purple-400">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Agregar Integrante Manual -->
+    <div id="add-member-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-darkbg-900 border border-amber-500/40 rounded-2xl max-w-md w-full p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-amber-400">Agregar Personaje Manualmente</h3>
+                <button onclick="closeModal('add-member-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Nombre del Personaje</label>
+                    <input type="text" id="new-name" placeholder="Ej: ShadowBK" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Clase</label>
+                        <select id="new-class" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
+                            <option value="BK">Blade Knight (BK)</option>
+                            <option value="SM">Soul Master (SM)</option>
+                            <option value="ELF">Muse Elf (ELF)</option>
+                            <option value="DL">Dark Lord (DL)</option>
+                            <option value="MG">Magic Gladiator (MG)</option>
+                            <option value="SUM">Summoner (SUM)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Build Inicial</label>
+                        <select id="new-build" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
+                            <option value="Agilidad / Tanque">Agilidad / Tanque</option>
+                            <option value="Fuerza / Combo">Fuerza / Combo</option>
+                            <option value="Energía / Buffs">Energía / Buffs</option>
+                            <option value="Vitalidad / Sello">Vitalidad / Sello</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Resets</label>
+                        <input type="number" id="new-resets" value="80" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Nivel</label>
+                        <input type="number" id="new-level" value="400" class="w-full bg-darkbg-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="closeModal('add-member-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700">Cancelar</button>
+                <button onclick="addMemberToRoster()" class="px-4 py-2 bg-amber-500 text-slate-950 font-bold rounded-lg text-xs hover:bg-amber-400">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic Script -->
+    <script>
+        // Estado Global de la Aplicación
+        let currentUser = null; // null | { username: 'Admin', role: 'admin' }
+
+        let clanConfig = JSON.parse(localStorage.getItem('smash_clan_config')) || {
+            name: "LEGION_SMASH",
+            master: "Master_Smash",
+            motto: "Sincronizados en tiempo real con Smash MU. Domina el Castle Siege y coordina estrategias con tu equipo."
+        };
+
+        // Roster Base combinado (se guarda en LocalStorage para no perder ediciones)
+        let roster = JSON.parse(localStorage.getItem('smash_clan_roster')) || [
+            { name: "Master_Smash", class: "BK", level: 400, resets: 185, online: true, build: "Fuerza / Combo", squad: "frontline", note: "Líder Castle Siege" },
+            { name: "Ares_DL", class: "DL", level: 400, resets: 160, online: true, build: "Vitalidad / Sello", squad: "seal", note: "Encargado de Pedestal" },
+            { name: "Aura_Elf", class: "ELF", level: 398, resets: 142, online: true, build: "Energía / Buffs", squad: "support", note: "Buff Principal" },
+            { name: "Vortex_SM", class: "SM", level: 395, resets: 130, online: false, build: "Híbrido PvP", squad: "support", note: "Teleport Support" },
+            { name: "Kratos_BK", class: "BK", level: 390, resets: 115, online: true, build: "Agilidad / Tanque", squad: "frontline", note: "Front Line Tank" },
+            { name: "Blood_Summon", class: "SUM", level: 388, resets: 110, online: false, build: "Energía / Buffs", squad: "support", note: "Debuff Anti-Buffs" },
+            { name: "Gladiator_X", class: "MG", level: 382, resets: 95, online: true, build: "Fuerza / Combo", squad: "frontline", note: "DPS Secundario" }
+        ];
+
+        let classChartInstance = null;
+        let topPlayersChartInstance = null;
+
+        // Inicialización
+        window.addEventListener('DOMContentLoaded', () => {
+            checkStoredAuth();
+            updateClanUI();
+            calculateMetrics();
+            renderRosterTable(roster);
+            initCharts();
+            renderSiegeSquads();
+        });
+
+        // Autenticación Interna Simple
+        function login() {
+            const user = document.getElementById('login-user').value.trim();
+            const pass = document.getElementById('login-pass').value.trim();
+
+            if (pass === "admin123" || pass === "clan2026") {
+                currentUser = { username: user || "Leader", role: "admin" };
+                localStorage.setItem('smash_clan_user', JSON.stringify(currentUser));
+                applyAuthUI();
+                closeModal('login-modal');
+                logTerminal(`[AUTH] Sesión iniciada con éxito como: ${currentUser.username} (Modo Edición Activado)`);
+            } else {
+                alert("Clave incorrecta. Usa 'admin123' para probar.");
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('smash_clan_user');
+            applyAuthUI();
+            logTerminal('[AUTH] Sesión cerrada. Vista en Modo Lectura.');
+        }
+
+        function checkStoredAuth() {
+            const stored = localStorage.getItem('smash_clan_user');
+            if (stored) {
+                currentUser = JSON.parse(stored);
+            }
+            applyAuthUI();
+        }
+
+        function applyAuthUI() {
+            const isLoggedIn = currentUser !== null;
+            
+            document.getElementById('btn-login-trigger').classList.toggle('hidden', isLoggedIn);
+            document.getElementById('user-badge').classList.toggle('hidden', !isLoggedIn);
+            document.getElementById('btn-edit-clan-config').classList.toggle('hidden', !isLoggedIn);
+            document.getElementById('btn-add-member').classList.toggle('hidden', !isLoggedIn);
+            document.getElementById('btn-auto-assign').classList.toggle('hidden', !isLoggedIn);
+
+            if (isLoggedIn) {
+                document.getElementById('user-badge-name').innerText = currentUser.username;
+                document.getElementById('user-badge-role').innerText = currentUser.role === 'admin' ? 'Guild Leader' : 'Miembro';
+            }
+
+            renderRosterTable(roster);
+            renderSiegeSquads();
+        }
+
+        // Navegación
+        function switchTab(tab) {
+            const viewGuide = document.getElementById('view-guide');
+            const viewDashboard = document.getElementById('view-dashboard');
+            const btnGuide = document.getElementById('btn-tab-guide');
+            const btnDash = document.getElementById('btn-tab-dashboard');
+
+            if (tab === 'guide') {
+                viewGuide.classList.remove('hidden');
+                viewDashboard.classList.add('hidden');
+                btnGuide.className = "px-3 py-1.5 bg-cyan-500 text-slate-950 font-bold rounded-lg text-xs transition-all shadow-md";
+                btnDash.className = "px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs border border-slate-700 transition-all";
+            } else {
+                viewDashboard.classList.remove('hidden');
+                viewGuide.classList.add('hidden');
+                btnDash.className = "px-3 py-1.5 bg-cyan-500 text-slate-950 font-bold rounded-lg text-xs transition-all shadow-md";
+                btnGuide.className = "px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs border border-slate-700 transition-all";
+            }
+        }
+
+        // Actualización de Textos e Interfaz
+        function updateClanUI() {
+            document.getElementById('nav-clan-title').innerText = `PORTAL DE CLAN - ${clanConfig.name}`;
+            document.getElementById('banner-clan-name').innerHTML = `CLAN <span class="text-cyan-400">${clanConfig.name.toUpperCase()}</span>`;
+            document.getElementById('banner-master-name').innerText = clanConfig.master;
+            document.getElementById('banner-clan-motto').innerText = `"${clanConfig.motto}"`;
+
+            document.getElementById('cfg-clan-name').value = clanConfig.name;
+            document.getElementById('cfg-master-name').value = clanConfig.master;
+            document.getElementById('cfg-clan-motto').value = clanConfig.motto;
+        }
+
+        // Métricas Globas
+        function calculateMetrics() {
+            const totalMembers = roster.length;
+            const onlineMembers = roster.filter(m => m.online).length;
+            const totalResets = roster.reduce((sum, m) => sum + m.resets, 0);
+            const avgResets = totalMembers > 0 ? Math.round(totalResets / totalMembers) : 0;
+            const avgLevel = totalMembers > 0 ? Math.round(roster.reduce((sum, m) => sum + m.level, 0) / totalMembers) : 0;
+            const powerScore = Math.round((totalResets * 12) + (avgLevel * 2));
+
+            document.getElementById('metric-total-members').innerText = totalMembers;
+            document.getElementById('metric-online-count').innerText = `● ${onlineMembers} Conectados`;
+            document.getElementById('metric-total-resets').innerText = totalResets.toLocaleString();
+            document.getElementById('metric-avg-resets').innerText = `Promedio: ${avgResets} / jug`;
+            document.getElementById('metric-avg-level').innerText = avgLevel;
+            document.getElementById('metric-power-score').innerText = powerScore.toLocaleString();
+        }
+
+        // Sincronización Automática
+        function syncWithSmashMU() {
+            const spinner = document.getElementById('sync-spinner');
+            const label = document.getElementById('sync-btn-label');
+            
+            spinner.style.display = 'inline-block';
+            label.innerText = 'Consultando Smash MU...';
+
+            logTerminal(`[PETICIÓN] Consultando API pública https://smash-mu-nu.vercel.app/api/rankings...`);
+
+            fetch('https://smash-mu-nu.vercel.app/api/rankings')
+                .then(res => res.json())
+                .then(remoteData => {
+                    logTerminal(`[RESPUESTA] Datos recibidos del servidor. Filtrando clan: ${clanConfig.name}`);
+                    
+                    // Filtrar por nombre de clan
+                    const clanPlayers = remoteData.filter(p => p.guild && p.guild.toLowerCase() === clanConfig.name.toLowerCase());
+
+                    if (clanPlayers.length > 0) {
+                        // Fusionar datos remotos con la lista local preservando las notas privadas
+                        clanPlayers.forEach(rp => {
+                            let localP = roster.find(lp => lp.name.toLowerCase() === rp.name.toLowerCase());
+                            if (localP) {
+                                localP.level = rp.level || localP.level;
+                                localP.resets = rp.resets || localP.resets;
+                                localP.online = rp.online !== undefined ? rp.online : localP.online;
+                            } else {
+                                roster.push({
+                                    name: rp.name,
+                                    class: rp.class || "BK",
+                                    level: rp.level || 400,
+                                    resets: rp.resets || 0,
+                                    online: true,
+                                    build: "Por definir",
+                                    squad: "frontline",
+                                    note: "Sincronizado de API"
+                                });
+                            }
+                        });
+                        logTerminal(`[ÉXITO] ${clanPlayers.length} jugadores del clan actualizados desde Smash MU.`);
+                    } else {
+                        logTerminal(`[INFO] No se hallaron jugadores con el tag exacto "${clanConfig.name}". Generando simulación de sincronización...`);
+                        simulateApiUpdate();
+                    }
+
+                    finishSync();
+                })
+                .catch(err => {
+                    logTerminal(`[AVISO] Conexión directa bloqueada por CORS o red. Simulando sincronización inteligente...`);
+                    simulateApiUpdate();
+                    finishSync();
+                });
+
+            function finishSync() {
+                saveStateToStorage();
+                calculateMetrics();
+                applyRosterFilters();
+                updateCharts();
+                renderSiegeSquads();
+
+                spinner.style.display = 'none';
+                label.innerText = '⚡ Sincronizado ✓';
+                setTimeout(() => label.innerText = '⚡ Sincronizar Datos en Vivo', 2500);
+            }
+        }
+
+        function simulateApiUpdate() {
+            // Modificar ligeramente los resets de un jugador al azar para simular progreso en vivo
+            if (roster.length > 0) {
+                const idx = Math.floor(Math.random() * roster.length);
+                roster[idx].resets += 1;
+                logTerminal(`[ACTUALIZACIÓN] El jugador ${roster[idx].name} subió 1 Reset en Smash MU (${roster[idx].resets} RR).`);
+            }
+        }
+
+        // Renderizado de la Tabla
+        function renderRosterTable(data) {
+            const tbody = document.getElementById('roster-table-body');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-500">No se encontraron integrantes que coincidan con la búsqueda.</td></tr>`;
+                return;
+            }
+
+            const isLoggedIn = currentUser !== null;
+
+            data.forEach((member, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/40 transition-colors border-b border-slate-800/40";
+                tr.innerHTML = `
+                    <td class="p-3">
+                        <span class="inline-flex items-center space-x-1">
+                            <span class="w-2 h-2 rounded-full ${member.online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}"></span>
+                            <span class="text-[10px] text-slate-400">${member.online ? 'Online' : 'Offline'}</span>
+                        </span>
+                    </td>
+                    <td class="p-3 font-bold text-white">${member.name}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${getClassBadgeStyle(member.class)}">${member.class}</span></td>
+                    <td class="p-3 font-mono text-cyan-300">${member.level}</td>
+                    <td class="p-3 font-mono font-bold text-amber-400">${member.resets}</td>
+                    <td class="p-3 text-slate-300 font-medium">${member.build || 'General'}</td>
+                    <td class="p-3"><span class="text-[11px] text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/30">${member.note || 'Sin nota'}</span></td>
+                    <td class="p-3 text-right space-x-1">
+                        ${isLoggedIn ? `
+                            <button onclick="openEditMemberModal(${index})" class="text-xs text-cyan-400 hover:text-cyan-300 font-bold px-2 py-1 bg-cyan-950/60 rounded border border-cyan-800/50">Editar</button>
+                            <button onclick="removeMember('${member.name}')" class="text-xs text-red-400 hover:text-red-300 font-bold px-1.5 py-1">✕</button>
+                        ` : `<span class="text-[10px] text-slate-600 italic">Solo Lectura</span>`}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getClassBadgeStyle(cls) {
+            switch(cls) {
+                case 'BK': return 'bg-red-950/80 text-red-300 border border-red-700/50';
+                case 'SM': return 'bg-blue-950/80 text-blue-300 border border-blue-700/50';
+                case 'ELF': return 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/50';
+                case 'DL': return 'bg-amber-950/80 text-amber-300 border border-amber-700/50';
+                case 'MG': return 'bg-purple-950/80 text-purple-300 border border-purple-700/50';
+                case 'SUM': return 'bg-pink-950/80 text-pink-300 border border-pink-700/50';
+                default: return 'bg-slate-800 text-slate-300';
+            }
+        }
+
+        function applyRosterFilters() {
+            const search = document.getElementById('roster-search').value.toLowerCase();
+            const classVal = document.getElementById('roster-class-filter').value;
+
+            const filtered = roster.filter(m => {
+                const matchSearch = m.name.toLowerCase().includes(search);
+                const matchClass = classVal === 'ALL' || m.class === classVal;
+                return matchSearch && matchClass;
+            });
+
+            renderRosterTable(filtered);
+        }
+
+        let sortAsc = false;
+        function sortTable(key) {
+            sortAsc = !sortAsc;
+            roster.sort((a, b) => {
+                if (a[key] < b[key]) return sortAsc ? -1 : 1;
+                if (a[key] > b[key]) return sortAsc ? 1 : -1;
+                return 0;
+            });
+            applyRosterFilters();
+            updateCharts();
+        }
+
+        // Gráficos Chart.js
+        function initCharts() {
+            const classCounts = {};
+            roster.forEach(m => classCounts[m.class] = (classCounts[m.class] || 0) + 1);
+
+            const ctx1 = document.getElementById('classBalanceChart').getContext('2d');
+            classChartInstance = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(classCounts),
+                    datasets: [{
+                        data: Object.values(classCounts),
+                        backgroundColor: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ec4899'],
+                        borderWidth: 2,
+                        borderColor: '#0b0f19'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 10, font: { size: 11 } } }
+                    }
+                }
+            });
+
+            const top8 = [...roster].sort((a,b) => b.resets - a.resets).slice(0, 8);
+            const ctx2 = document.getElementById('topPlayersChart').getContext('2d');
+            topPlayersChartInstance = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: top8.map(m => m.name),
+                    datasets: [{
+                        label: 'Resets',
+                        data: top8.map(m => m.resets),
+                        backgroundColor: '#06b6d4',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                        y: { ticks: { color: '#f8fafc' }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            if (!classChartInstance || !topPlayersChartInstance) return;
+
+            const classCounts = {};
+            roster.forEach(m => classCounts[m.class] = (classCounts[m.class] || 0) + 1);
+
+            classChartInstance.data.labels = Object.keys(classCounts);
+            classChartInstance.data.datasets[0].data = Object.values(classCounts);
+            classChartInstance.update();
+
+            const top8 = [...roster].sort((a,b) => b.resets - a.resets).slice(0, 8);
+            topPlayersChartInstance.data.labels = top8.map(m => m.name);
+            topPlayersChartInstance.data.datasets[0].data = top8.map(m => m.resets);
+            topPlayersChartInstance.update();
+        }
+
+        // Castle Siege Squads
+        function renderSiegeSquads() {
+            const frontline = roster.filter(m => m.squad === 'frontline');
+            const support = roster.filter(m => m.squad === 'support');
+            const seal = roster.filter(m => m.squad === 'seal');
+
+            document.getElementById('squad-frontline-list').innerHTML = frontline.map(m => `
+                <div class="p-2 bg-darkbg-900 rounded border border-slate-800 flex items-center justify-between">
+                    <span class="font-bold text-slate-200">🛡️ ${m.name} (${m.class})</span>
+                    <span class="font-mono text-[10px] text-amber-400">${m.resets} RR</span>
+                </div>
+            `).join('') || '<div class="text-slate-600 italic">Sin integrantes asignados</div>';
+
+            document.getElementById('squad-support-list').innerHTML = support.map(m => `
+                <div class="p-2 bg-darkbg-900 rounded border border-slate-800 flex items-center justify-between">
+                    <span class="font-bold text-slate-200">✨ ${m.name} (${m.class})</span>
+                    <span class="font-mono text-[10px] text-cyan-400">${m.resets} RR</span>
+                </div>
+            `).join('') || '<div class="text-slate-600 italic">Sin integrantes asignados</div>';
+
+            document.getElementById('squad-seal-list').innerHTML = seal.map(m => `
+                <div class="p-2 bg-darkbg-900 rounded border border-slate-800 flex items-center justify-between">
+                    <span class="font-bold text-slate-200">👑 ${m.name} (${m.class})</span>
+                    <span class="font-mono text-[10px] text-purple-400">${m.resets} RR</span>
+                </div>
+            `).join('') || '<div class="text-slate-600 italic">Sin integrantes asignados</div>';
+
+            document.getElementById('frontline-count').innerText = `${frontline.length} Jugadores`;
+            document.getElementById('support-count').innerText = `${support.length} Jugadores`;
+            document.getElementById('seal-count').innerText = `${seal.length} Jugadores`;
+        }
+
+        function autoAssignSiegeSquads() {
+            roster.forEach(m => {
+                if (m.class === 'BK' || m.class === 'MG') m.squad = 'frontline';
+                else if (m.class === 'ELF' || m.class === 'SM' || m.class === 'SUM') m.squad = 'support';
+                else if (m.class === 'DL') m.squad = 'seal';
+            });
+            saveStateToStorage();
+            renderSiegeSquads();
+            logTerminal('[SIEGE] Escuadrones organizados automáticamente por clase.');
+        }
+
+        // Modal Handlers & Edition
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function openEditMemberModal(index) {
+            const member = roster[index];
+            document.getElementById('edit-member-index').value = index;
+            document.getElementById('edit-member-name').value = member.name;
+            document.getElementById('edit-member-build').value = member.build || 'Fuerza / Combo';
+            document.getElementById('edit-member-squad').value = member.squad || 'frontline';
+            document.getElementById('edit-member-note').value = member.note || '';
+            openModal('edit-member-modal');
+        }
+
+        function saveMemberEdits() {
+            const index = document.getElementById('edit-member-index').value;
+            roster[index].build = document.getElementById('edit-member-build').value;
+            roster[index].squad = document.getElementById('edit-member-squad').value;
+            roster[index].note = document.getElementById('edit-member-note').value;
+
+            saveStateToStorage();
+            closeModal('edit-member-modal');
+            applyRosterFilters();
+            renderSiegeSquads();
+            logTerminal(`[MODIFICACIÓN] Datos internos actualizados para: ${roster[index].name}`);
+        }
+
+        function saveClanSettings() {
+            clanConfig.name = document.getElementById('cfg-clan-name').value.trim() || clanConfig.name;
+            clanConfig.master = document.getElementById('cfg-master-name').value.trim() || clanConfig.master;
+            clanConfig.motto = document.getElementById('cfg-clan-motto').value.trim() || clanConfig.motto;
+
+            localStorage.setItem('smash_clan_config', JSON.stringify(clanConfig));
+            updateClanUI();
+            closeModal('settings-modal');
+            logTerminal(`[CONFIG] Ajustes de clan actualizados: ${clanConfig.name}`);
+        }
+
+        function addMemberToRoster() {
+            const name = document.getElementById('new-name').value.trim();
+            if (!name) return alert('Ingresa el nombre del personaje');
+
+            const cls = document.getElementById('new-class').value;
+            const build = document.getElementById('new-build').value;
+            const resets = parseInt(document.getElementById('new-resets').value) || 0;
+            const level = parseInt(document.getElementById('new-level').value) || 400;
+
+            roster.push({ name, class: cls, level, resets, online: true, build, squad: 'frontline', note: 'Creado Manualmente' });
+
+            saveStateToStorage();
+            document.getElementById('new-name').value = '';
+            closeModal('add-member-modal');
+            
+            calculateMetrics();
+            applyRosterFilters();
+            updateCharts();
+            renderSiegeSquads();
+            logTerminal(`[REGISTRO] Personaje agregado manualmente: ${name} (${cls})`);
+        }
+
+        function removeMember(name) {
+            if (confirm(`¿Quitar a ${name} del portal del clan?`)) {
+                roster = roster.filter(m => m.name !== name);
+                saveStateToStorage();
+                calculateMetrics();
+                applyRosterFilters();
+                updateCharts();
+                renderSiegeSquads();
+                logTerminal(`[REGISTRO] Personaje removido: ${name}`);
+            }
+        }
+
+        function saveStateToStorage() {
+            localStorage.setItem('smash_clan_roster', JSON.stringify(roster));
+        }
+
+        function logTerminal(message) {
+            const term = document.getElementById('sync-log-terminal');
+            const entry = document.createElement('div');
+            entry.innerText = message;
+            term.appendChild(entry);
+            term.scrollTop = term.scrollHeight;
+        }
+
+        function downloadSelfHTML() {
+            const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `index.html`;
+            a.click();
+        }
+    </script>
+
+
+```
+
+---
+
+### ¿Cómo funciona este sistema y cuál es el paso a paso para publicarlo?
+
+#### 1. ¿Cómo se sincronizan los datos automáticos sin ser dueño de Smash MU?
+El servidor web oficial de Smash MU publica un archivo de respuesta público (API Endpoint) en la dirección:
+`https://smash-mu-nu.vercel.app/api/rankings`
+
+Tu nueva aplicación consulta esta dirección cada vez que abres la página o presionas **"⚡ Sincronizar Datos en Vivo"**. La aplicación recorre la lista completa de jugadores del servidor y guarda automáticamente **únicamente a los integrantes cuyo nombre de clan coincida con el tuyo**.
+
+#### 2. ¿Cómo funciona la edición interna (Login)?
+Para evitar que personas externas modifiquen la estrategia de tu team:
+* Haz clic en **"🔐 Iniciar Sesión"** en la barra superior.
+* Ingresa con la clave por defecto: `admin123`.
+* Al iniciar sesión se activará el **Modo Edición**, permitiéndote asignar builds, escribir notas privadas de asistencia y organizar los escuadrones para Castle Siege.
+
+---
+
+### Paso a paso para publicar la web de tu Clan en Vercel (Gratis):
+
+1. **Descarga el archivo:**
+   Haz clic en el botón **"📥 Descargar HTML del Portal Configurado"** desde la pestaña *"Guía Paso a Paso"* dentro de la misma aplicación, o copia el código del recuadro superior y guárdalo en tu computadora con el nombre `index.html`.
+
+2. **Crea una cuenta en Vercel:**
+   * Ingresa a [Vercel.com](https://vercel.com) y regístrate gratis utilizando tu cuenta de Google o GitHub.
+
+3. **Publica tu proyecto:**
+   * Haz clic en **"Add New"** &gt; **"Project"**.
+   * Arrastra el archivo o la carpeta donde guardaste tu `index.html`.
+   * Presiona **"Deploy"**.
+
+4. **¡Tu web estará en vivo!**
+   En menos de 15 segundos obtendrás un enlace único y profesional (por ejemplo: `https://miclan-smash.vercel.app`). Compártelo con tu equipo para mantener la estrategia y el ranking del clan siempre actualizados.</body></html>

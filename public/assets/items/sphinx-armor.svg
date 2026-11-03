@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <!-- Background & Aura Glows -->
+    <radialGradient id="sphinxGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.5"/>
+      <stop offset="50%" stop-color="#6366f1" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#090d1f" stop-opacity="0"/>
+    </radialGradient>
+    
+    <linearGradient id="armorMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="35%" stop-color="#1e3a8a"/>
+      <stop offset="70%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <linearGradient id="goldTrim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="40%" stop-color="#f59e0b"/>
+      <stop offset="80%" stop-color="#b45309"/>
+      <stop offset="100%" stop-color="#78350f"/>
+    </linearGradient>
+
+    <radialGradient id="arcaneGem" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="50%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#082f49"/>
+    </radialGradient>
+
+    <filter id="auraGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Aura Background Circle -->
+  <circle cx="60" cy="60" r="54" fill="url(#sphinxGlow)"/>
+
+  <g filter="url(#auraGlow)">
+    <!-- Pauldrons / Shoulder Guards (Left & Right) -->
+    <!-- Left Shoulder Horn/Plate -->
+    <path d="M 24 35 C 16 38, 14 52, 28 58 C 34 50, 36 38, 24 35 Z" fill="url(#armorMetal)" stroke="url(#goldTrim)" stroke-width="1.5"/>
+    <path d="M 20 40 L 10 44 L 22 52 Z" fill="url(#goldTrim)"/>
+    
+    <!-- Right Shoulder Horn/Plate -->
+    <path d="M 96 35 C 104 38, 106 52, 92 58 C 86 50, 84 38, 96 35 Z" fill="url(#armorMetal)" stroke="url(#goldTrim)" stroke-width="1.5"/>
+    <path d="M 100 40 L 110 44 L 98 52 Z" fill="url(#goldTrim)"/>
+
+    <!-- High Collar / Gorget -->
+    <path d="M 45 24 Q 60 28 75 24 L 72 36 Q 60 40 48 36 Z" fill="url(#armorMetal)" stroke="url(#goldTrim)" stroke-width="1.2"/>
+    <polygon points="60,26 63,33 57,33" fill="#38bdf8"/>
+
+    <!-- Main Breastplate Chest Structure -->
+    <path d="M 34 42 Q 60 38 86 42 L 80 72 L 60 84 L 40 72 Z" fill="url(#armorMetal)" stroke="url(#goldTrim)" stroke-width="2"/>
+
+    <!-- Gold Ornamentation Wings on Chest -->
+    <path d="M 42 46 Q 60 56 78 46 Q 68 62 60 66 Q 52 62 42 46 Z" fill="none" stroke="url(#goldTrim)" stroke-width="2"/>
+    <path d="M 48 50 Q 60 58 72 50" fill="none" stroke="#facc15" stroke-width="1.2"/>
+
+    <!-- Core Arcane Blue Jewel (+13 Power Source) -->
+    <polygon points="60,52 66,59 60,67 54,59" fill="url(#arcaneGem)" stroke="#e0f2fe" stroke-width="1"/>
+    <circle cx="58" cy="56" r="1.5" fill="#ffffff" opacity="0.9"/>
+
+    <!-- Lower Rib Armor / Abdomen Plates -->
+    <path d="M 43 72 L 60 81 L 77 72 L 74 92 L 60 102 L 46 92 Z" fill="#0f172a" stroke="url(#goldTrim)" stroke-width="1.5"/>
+    <line x1="60" y1="81" x2="60" y2="102" stroke="url(#goldTrim)" stroke-width="1.5"/>
+    <line x1="48" y1="81" x2="72" y2="81" stroke="#f59e0b" stroke-width="1"/>
+    <line x1="50" y1="90" x2="70" y2="90" stroke="#f59e0b" stroke-width="1"/>
+
+    <!-- Side Flanks / Tassets -->
+    <path d="M 38 72 L 44 94 L 35 88 Z" fill="url(#goldTrim)"/>
+    <path d="M 82 72 L 76 94 L 85 88 Z" fill="url(#goldTrim)"/>
+
+    <!-- Sparkle Accent Stars (+13 Enchant Glow) -->
+    <g fill="#fef08a" opacity="0.85">
+      <polygon points="26,28 28,33 33,35 28,37 26,42 24,37 19,35 24,33"/>
+      <polygon points="94,28 96,33 101,35 96,37 94,42 92,37 87,35 92,33"/>
+      <circle cx="60" cy="59" r="6" fill="#38bdf8" opacity="0.3"/>
+    </g>
+  </g>
+</svg>
