@@ -11,8 +11,9 @@ export const initialClanConfig: ClanConfig = {
   alliance: 'Smash MU Coalition',
   castleStatus: 'holding',
   currentCastle: 'Castillo de Loren Deep',
-  discordUrl: 'https://discord.gg/smashmu',
-  whatsappUrl: '#',
+  discordUrl: 'https://discord.gg/VqDMBHkGGe',
+  smashMuDiscordUrl: 'https://discord.gg/PTyyyEtKjm',
+  whatsappUrl: '',
 };
 
 export const initialCharacters: Character[] = [
@@ -21,8 +22,8 @@ export const initialCharacters: Character[] = [
     name: 'MATONSITO',
     characterClass: 'SM',
     classNameTitle: 'Grand Master',
-    level: 1,
-    resets: 227,
+    level: 395,
+    resets: 240,
     gearscore: 1487,
     masterResets: 0,
     online: true,
@@ -318,64 +319,7 @@ export const serverEvents: ServerEvent[] = [
   },
 ];
 
-export const initialSharedAccounts: SharedAccount[] = [
-  {
-    id: 'acc-1',
-    title: 'Elf de Buff Guild #1',
-    accountCategory: 'buffer_elf',
-    characterName: 'Aura_Anomaly',
-    characterClass: 'ELF',
-    level: 400,
-    resets: 150,
-    purpose: 'Aura de Daño y Defensa para miembros activos leveleando o en Blood Castle.',
-    holder: 'Uso Libre para Miembros',
-    status: 'available',
-    inventorySummary: 'Set Wind +13, Albatross Bow +11, 200 Pociones de Maná',
-    accessCodeHint: 'Clave en canal #cuentas-clan de Discord',
-  },
-  {
-    id: 'acc-2',
-    title: 'Dark Lord Summoner de Emergencia',
-    accountCategory: 'dl_summon',
-    characterName: 'Warp_Anomaly',
-    characterClass: 'DL',
-    level: 400,
-    resets: 135,
-    purpose: 'Posicionado en Crywolf y Loren Deep para convocar party instantáneamente.',
-    holder: 'Reservado para Battle Masters',
-    status: 'available',
-    inventorySummary: 'Dark Horse Nivel 50, Capa de Lord +13, Anillos Resistencia',
-    accessCodeHint: 'Solo oficiales de asedio',
-  },
-  {
-    id: 'acc-3',
-    title: 'Baúl Comunitario: Pociones & Joyas de Asedio',
-    accountCategory: 'guild_vault',
-    characterName: 'Vault_Anomaly',
-    characterClass: 'BK',
-    level: 250,
-    resets: 10,
-    purpose: 'Reserva estratégica para Castle Siege: Pociones de Vida Élite, Pociones de SD y Sign of Lord.',
-    holder: 'Custodiado por UlmerMG (Guild Master)',
-    status: 'available',
-    inventorySummary: '240 Pociones SD Grandes, 300 Pociones Vida +15, 80 Sign of Lord',
-    accessCodeHint: 'Solicitar retiro a UlmerMG (GM) en Discord',
-  },
-  {
-    id: 'acc-4',
-    title: 'Magic Gladiator Farmeador de Plumas & Crests',
-    accountCategory: 'farm_mg',
-    characterName: 'Farm_Anomaly',
-    characterClass: 'MG',
-    level: 390,
-    resets: 95,
-    purpose: 'Farmeo de Plumas Condor y Crest of Monarch en Tarkan e Icarus para el clan.',
-    holder: 'Asignado a UlmerDL',
-    status: 'available',
-    inventorySummary: 'Set Hurricane +11, 2x Rune Blade +11, Alas de MG +11',
-    accessCodeHint: 'Solicitar clave en Discord',
-  },
-];
+export const initialSharedAccounts: SharedAccount[] = [];
 
 export const classBuildTemplates = {
   BK: [

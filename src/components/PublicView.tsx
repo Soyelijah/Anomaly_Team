@@ -3,7 +3,21 @@ import { Character, ClanConfig, CharacterClass } from '../types/clan';
 import { GuildMark } from './GuildMark';
 import { ClanHeroBanner } from './ClanHeroBanner';
 import { RosterView } from './RosterView';
-import { Shield, Trophy, Users, Swords, Crown, UserPlus, CheckCircle2, ChevronRight, Sparkles, Eye } from 'lucide-react';
+import {
+  Shield,
+  Trophy,
+  Users,
+  Swords,
+  Crown,
+  UserPlus,
+  CheckCircle2,
+  ChevronRight,
+  Sparkles,
+  Eye,
+  MessageSquare,
+  Radio,
+  ExternalLink,
+} from 'lucide-react';
 
 interface PublicViewProps {
   clanConfig: ClanConfig;
@@ -22,6 +36,7 @@ interface PublicViewProps {
   onEditCharacter?: (char: Character) => void;
   onDeleteCharacter?: (id: string) => void;
   onOpenAddModal?: () => void;
+  onOpenCommunity?: () => void;
   syncLog?: string[];
   onRefresh?: () => void;
   isSyncing?: boolean;
@@ -37,6 +52,7 @@ export const PublicView: React.FC<PublicViewProps> = ({
   onEditCharacter = () => {},
   onDeleteCharacter = () => {},
   onOpenAddModal = () => {},
+  onOpenCommunity = () => {},
   syncLog = [],
   onRefresh,
   isSyncing = false,
@@ -126,6 +142,39 @@ export const PublicView: React.FC<PublicViewProps> = ({
           <div className="text-[11px] sm:text-xs text-slate-400 mb-1 font-medium truncate">Estatus de Fortaleza</div>
           <div className="text-xl sm:text-2xl xl:text-3xl font-extrabold text-cyan-400 truncate tracking-tight">DEFENSA</div>
           <div className="text-[10px] sm:text-[11px] text-slate-400 mt-1 truncate">Corona asegurada</div>
+        </div>
+      </section>
+
+      {/* Community Channels & Castle Siege Emergency Voice Banner */}
+      <section className="bg-gradient-to-r from-[#121633] via-[#10192e] to-[#0d1c1a] p-4 sm:p-5 rounded-2xl border border-purple-500/40 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3.5 min-w-0">
+          <div className="p-2.5 bg-purple-600/20 border border-purple-500/40 rounded-xl text-purple-300 shrink-0">
+            <MessageSquare className="w-5 h-5 text-purple-400" />
+          </div>
+          <div className="space-y-0.5 min-w-0">
+            <div className="flex items-center space-x-2">
+              <h3 className="font-extrabold text-white text-sm sm:text-base truncate">
+                Canales Oficiales del Clan: Discord &amp; WhatsApp
+              </h3>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0 hidden sm:inline">
+                Sincronizado
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed truncate">
+              Salas de voz para Castle Siege (Alpha, Bravo, Charlie) y grupo de WhatsApp para invasiones doradas y defensas urgentes.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2 shrink-0">
+          <button
+            type="button"
+            onClick={onOpenCommunity}
+            className="w-full md:w-auto px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
+          >
+            <Radio className="w-3.5 h-3.5 text-emerald-300 animate-pulse" />
+            <span>Abrir Canales &amp; Guía de Asedio</span>
+          </button>
         </div>
       </section>
 

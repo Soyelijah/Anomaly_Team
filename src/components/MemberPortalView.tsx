@@ -394,13 +394,24 @@ export const MemberPortalView: React.FC<MemberPortalViewProps> = ({
                 />
                 <button
                   type="submit"
-                  className="w-full py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl transition-colors flex items-center justify-center space-x-1.5 shadow-sm"
+                  className="w-full py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl transition-colors flex items-center justify-center space-x-1.5 shadow-sm cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>Enviar Pedido de Suministro</span>
                 </button>
               </form>
             )}
+
+            <div className="pt-3 border-t border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => onNavigateToTab('vault')}
+                className="w-full py-2 bg-purple-950/70 hover:bg-purple-900 border border-purple-700/50 text-purple-200 font-bold text-xs rounded-xl transition-colors flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <Package className="w-4 h-4 text-purple-400" />
+                <span>Ver Cuentas Compartidas &amp; Elfas de Buff</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

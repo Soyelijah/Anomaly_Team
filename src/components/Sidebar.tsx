@@ -10,6 +10,9 @@ import {
   RefreshCw,
   Sparkles,
   X,
+  UserCheck,
+  Package,
+  MessageSquare,
 } from 'lucide-react';
 import { GuildMark } from './GuildMark';
 
@@ -22,6 +25,7 @@ interface SidebarProps {
   onLogoutOfficer: () => void;
   isSyncing: boolean;
   onSync: () => void;
+  onOpenCommunity?: () => void;
   onClose?: () => void;
 }
 
@@ -34,6 +38,7 @@ interface NavItem {
     text: string;
     isLive?: boolean;
   };
+  onClick?: () => void;
 }
 
 interface NavSection {
@@ -50,6 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogoutOfficer,
   isSyncing,
   onSync,
+  onOpenCommunity,
   onClose,
 }) => {
   const navSections: NavSection[] = [
@@ -81,10 +87,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Shield,
         },
         {
-          id: 'dkp',
-          label: 'Sistema DKP',
-          sublabel: 'Puntos de asistencia',
-          icon: Coins,
+          id: 'member',
+          label: 'Mi Portal',
+          sublabel: 'Asistencia y mi PJ',
+          icon: UserCheck,
+        },
+        {
+          id: 'vault',
+          label: 'Cuentas & Baúles',
+          sublabel: 'Buffer Elfs & Mulas',
+          icon: Package,
+          badge: { text: 'CLAN' },
         },
         {
           id: 'auction',
@@ -95,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     {
-      category: 'Herramientas en Vivo',
+      category: 'Comunidad y En Vivo',
       items: [
         {
           id: 'events',
@@ -103,6 +116,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           sublabel: 'Invasiones y eventos',
           icon: Radio,
           badge: { text: 'LIVE', isLive: true },
+        },
+        {
+          id: 'community',
+          label: 'Canales Oficiales',
+          sublabel: 'Discord & WhatsApp',
+          icon: MessageSquare,
+          badge: { text: 'VOZ' },
+          onClick: onOpenCommunity,
         },
       ],
     },
@@ -165,7 +186,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <button
                       key={item.id}
                       onClick={() => {
-                        setActiveTab(item.id);
+                        if (item.onClick) {
+                          item.onClick();
+                        } else {
+                          setActiveTab(item.id);
+                        }
                         if (onClose) onClose();
                       }}
                       className={`relative group w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all duration-200 ease-out cursor-pointer ${

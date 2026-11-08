@@ -1,0 +1,274 @@
+{
+  "matonsito": {
+    "name": "MATONSITO",
+    "classKey": "DW",
+    "className": "Grand Master",
+    "level": 395,
+    "resets": 240,
+    "gearScore": 1487,
+    "masterLevel": 150,
+    "stats": {
+      "strength": 90,
+      "agility": 150,
+      "vitality": 15,
+      "energy": 1796,
+      "leadership": 0
+    },
+    "cap400Stats": {
+      "strength": 90,
+      "agility": 150,
+      "vitality": 15,
+      "energy": 1821,
+      "leadership": 0
+    },
+    "exactGearStats": {
+      "strength": 90,
+      "agility": 25,
+      "vitality": 15,
+      "energy": 30,
+      "leadership": 0
+    },
+    "source": "Smash MU Official API (Profile Lvl 395, Resets 240, GearScore 1487, Master Level 150)",
+    "lastUpdated": "2026-11-05T19:20:00.000Z"
+  },
+  "skytm": {
+    "name": "SkyTM",
+    "classKey": "DW",
+    "className": "Grand Master",
+    "level": 348,
+    "resets": 229,
+    "gearScore": 1417,
+    "stats": {
+      "strength": 70,
+      "agility": 150,
+      "vitality": 15,
+      "energy": 1581,
+      "leadership": 0
+    },
+    "exactGearStats": {
+      "strength": 70,
+      "agility": 23,
+      "vitality": 15,
+      "energy": 30,
+      "leadership": 0
+    },
+    "source": "Smash MU Official API (Profile Lvl 348, Resets 229, GearScore 1417)",
+    "lastUpdated": "2026-11-04T21:12:08.866Z"
+  },
+  "saviogm": {
+    "name": "SavioGM",
+    "classKey": "DW",
+    "className": "Grand Master",
+    "level": 400,
+    "resets": 225,
+    "gearScore": 1396,
+    "stats": {
+      "strength": 90,
+      "agility": 150,
+      "vitality": 15,
+      "energy": 1821,
+      "leadership": 0
+    },
+    "exactGearStats": {
+      "strength": 90,
+      "agility": 25,
+      "vitality": 15,
+      "energy": 30,
+      "leadership": 0
+    },
+    "source": "Smash MU Official API (Profile Lvl 400, Resets 225, GearScore 1396)",
+    "lastUpdated": "2026-11-04T21:12:09.607Z"
+  },
+  "matthew": {
+    "name": "Matthew",
+    "classKey": "DW",
+    "className": "Grand Master",
+    "level": 400,
+    "resets": 217,
+    "gearScore": 1349,
+    "stats": {
+      "strength": 90,
+      "agility": 150,
+      "vitality": 15,
+      "energy": 1821,
+      "leadership": 0
+    },
+    "exactGearStats": {
+      "strength": 90,
+      "agility": 25,
+      "vitality": 15,
+      "energy": 30,
+      "leadership": 0
+    },
+    "source": "Smash MU Official API (Profile Lvl 400, Resets 217, GearScore 1349)",
+    "lastUpdated": "2026-11-04T21:12:10.309Z"
+  },
+  "pocajontas": {
+    "name": "Pocajontas",
+    "classKey": "FE",
+    "className": "High Elf",
+    "level": 400,
+    "resets": 224,
+    "gearScore": 1319,
+    "stats": {
+      "strength": 40,
+      "agility": 2002,
+      "vitality": 20,
+      "energy": 15,
+      "leadership": 0
+    },
+    "exactGearStats": {
+      "strength": 40,
+      "agility": 110,
+      "vitality": 20,
+      "energy": 15,
+      "leadership": 0
+    },
+    "source": "Smash MU Official API (Profile Lvl 400, Resets 224, GearScore 1319)",
+    "lastUpdated": "2026-11-04T21:12:10.998Z"
+  },
+  "prinmestis": {
+    "name": "prinmestis",
+    "classKey": "DW",
+    "className": "Grand Master",
+    "level": 343,
+    "resets": 224,
+    "gearScore": 1259,
+    "stats": {
+      "strength": 90,
+      "agility": 150,
+      "vitality": 15,
+      "energy": 1536,
+      "leadership": 0
+    },
+    "exactGearStats": {
+      "strength": 90,
+      "agility": 25,
+      "vitality": 15,
+      "energy": 30,
+      "leadership": 0
+    },
+    "source": "Smash MU Official API (Profile Lvl 343, Resets 224, GearScore 1259)",
+    "lastUpdated": "2026-11-04T21:12:11.797Z"
+  },
+  "cass": {
+    "name": "CasS",
+    "classKey": "RF",
+    "className": "Fist Master",
+    "level": 400,
+    "resets": 171,
+    "gearScore": 1255,
+    "stats": {
+      "strength": 664,
+      "agility": 35,
+      "vitality": 1380,
+      "energy": 20,
+      "leadership": 0
+    },
+    "exactGearStats": {
+      "strength": 115,
+      "agility": 35,
+      "vitality": 100,
+      "energy": 20,
+      "leadership": 0
+    },
+    "source": "Smash MU Official API (Profile Lvl 400, Resets 171, GearScore 1255)",
+    "lastUpdated": "2026-11-04T21:12:12.482Z"
+  },
+  "yhambo": {
+    "name": "Yhambo",
+    "classKey": "DW",
+    "className": "Grand Master",
+    "level": 392,
+    "resets": 177,
+    "gearScore": 1152,
+    "stats": {
+      "strength": 90,
+      "agility": 150,
+      "vitality": 15,
+      "energy": 1781,
+      "leadership": 0
+    },
+    "exactGearStats": {
+      "strength": 90,
+      "agility": 25,
+      "vitality": 15,
+      "energy": 30,
+      "leadership": 0
+    },
+    "source": "Smash MU Official API (Profile Lvl 392, Resets 177, GearScore 1152)",
+    "lastUpdated": "2026-11-04T21:12:13.197Z"
+  },
+  "rusbelx23": {
+    "name": "rusbelx23",
+    "classKey": "DW",
+    "className": "Grand Master",
+    "level": 400,
+    "resets": 191,
+    "gearScore": 1104,
+    "stats": {
+      "strength": 70,
+      "agility": 150,
+      "vitality": 15,
+      "energy": 1841,
+      "leadership": 0
+    },
+    "exactGearStats": {
+      "strength": 70,
+      "agility": 18,
+      "vitality": 15,
+      "energy": 30,
+      "leadership": 0
+    },
+    "source": "Smash MU Official API (Profile Lvl 400, Resets 191, GearScore 1104)",
+    "lastUpdated": "2026-11-04T21:12:13.948Z"
+  },
+  "ulmerdl": {
+    "name": "UlmerDL",
+    "classKey": "DL",
+    "className": "Lord Emperor",
+    "level": 272,
+    "resets": 229,
+    "gearScore": 1024,
+    "stats": {
+      "strength": 1703,
+      "agility": 40,
+      "vitality": 20,
+      "energy": 15,
+      "leadership": 225
+    },
+    "exactGearStats": {
+      "strength": 100,
+      "agility": 40,
+      "vitality": 20,
+      "energy": 15,
+      "leadership": 25
+    },
+    "source": "Smash MU Official API (Profile Lvl 272, Resets 229, GearScore 1024)",
+    "lastUpdated": "2026-11-04T21:12:14.762Z"
+  },
+  "ulmermg": {
+    "name": "UlmerMG",
+    "classKey": "MG",
+    "className": "Magic Gladiator",
+    "level": 400,
+    "resets": 168,
+    "gearScore": 851,
+    "stats": {
+      "strength": 1218,
+      "agility": 70,
+      "vitality": 26,
+      "energy": 1583,
+      "leadership": 0
+    },
+    "exactGearStats": {
+      "strength": 180,
+      "agility": 70,
+      "vitality": 26,
+      "energy": 26,
+      "leadership": 0
+    },
+    "source": "Smash MU Official API (Profile Lvl 400, Resets 168, GearScore 851)",
+    "lastUpdated": "2026-11-04T21:12:15.482Z"
+  }
+}

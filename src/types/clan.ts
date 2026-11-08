@@ -67,6 +67,7 @@ export interface ClanConfig {
   castleStatus: 'holding' | 'attacking' | 'contender';
   currentCastle: string;
   discordUrl: string;
+  smashMuDiscordUrl: string;
   whatsappUrl: string;
 }
 
@@ -155,6 +156,25 @@ export interface SmashMUEquipmentItem {
   };
 }
 
+export interface SmashMUGearRequirements {
+  strength: number;
+  agility: number;
+  vitality: number;
+  energy: number;
+  leadership: number;
+  itemsRequiring: Array<{ itemName: string; strength: number; agility: number }>;
+}
+
+export interface SmashMURealisticStats {
+  strength: number;
+  agility: number;
+  vitality: number;
+  energy: number;
+  leadership: number;
+  totalPoints: number;
+  statNote: string;
+}
+
 export interface SmashMUCharacterProfile {
   success: boolean;
   hidden: boolean;
@@ -176,6 +196,8 @@ export interface SmashMUCharacterProfile {
     };
   };
   equipment: SmashMUEquipmentItem[];
+  gearRequirements?: SmashMUGearRequirements;
+  realisticStats?: SmashMURealisticStats;
 }
 
 export interface SmashMUGuildLeagueSeason {

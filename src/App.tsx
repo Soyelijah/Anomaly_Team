@@ -17,22 +17,19 @@ import { PublicView } from './components/PublicView';
 import { RosterView } from './components/RosterView';
 import { GuildLeaguesView } from './components/GuildLeaguesView';
 import { EventsRadar } from './components/EventsRadar';
-import { DKPView } from './components/DKPView';
 import { AuctionView } from './components/AuctionView';
 import { MemberPortalView } from './components/MemberPortalView';
+import { VaultAccountsView } from './components/VaultAccountsView';
+import { CommunityModal } from './components/CommunityModal';
 import { LoginModal, EditMemberModal, AddMemberModal, AddVaultAccountModal } from './components/Modals';
 import { EquipmentInspectorModal } from './components/EquipmentInspectorModal';
 import { WorldClockBar } from './components/WorldClockBar';
+import { MessageSquare } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('players');
+  const [activeTab, setActiveTab] = useState('clan');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [clanConfig] = useState<ClanConfig>(() => {
-    const saved = localStorage.getItem('anomaly_clan_config');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.master === 'UlmerMG') return parsed;
-    }
     return initialClanConfig;
   });
 
@@ -71,12 +68,22 @@ export default function App() {
   });
 
   const [currentMember, setCurrentMember] = useState<string | null>(() => {
-    return localStorage.getItem('anomaly_current_member') || 'UlmerMG';
+    return localStorage.getItem('anomaly_current_member') || 'MATONSITO';
   });
 
   const [sharedAccounts, setSharedAccounts] = useState<SharedAccount[]>(() => {
     const saved = localStorage.getItem('anomaly_clan_vault');
-    return saved ? JSON.parse(saved) : initialSharedAccounts;
+    if (saved) {
+      try {
+        const parsed: SharedAccount[] = JSON.parse(saved);
+        return parsed.filter(
+          (a) => !/Aura_Anomaly|Warp_Anomaly|Vault_Anomaly|Farm_Anomaly|Anomaly_Warrior/i.test(a.characterName)
+        );
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
   });
 
   const [isOfficer, setIsOfficer] = useState<boolean>(() => {
@@ -103,6 +110,7 @@ export default function App() {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
   const [inspectedCharacter, setInspectedCharacter] = useState<string | null>(null);
+  const [isCommunityOpen, setIsCommunityOpen] = useState(false);
 
   // Persistence
   useEffect(() => {
@@ -471,6 +479,7 @@ export default function App() {
           onLogoutOfficer={handleLogout}
           isSyncing={isSyncing}
           onSync={fetchSmashMuData}
+          onOpenCommunity={() => setIsCommunityOpen(true)}
         />
       </div>
 
@@ -499,6 +508,10 @@ export default function App() {
               onLogoutOfficer={handleLogout}
               isSyncing={isSyncing}
               onSync={fetchSmashMuData}
+              onOpenCommunity={() => {
+                setIsCommunityOpen(true);
+                setMobileSidebarOpen(false);
+              }}
               onClose={() => setMobileSidebarOpen(false)}
             />
           </div>
@@ -531,7 +544,18 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2.5 sm:space-x-4 text-xs shrink-0">
+          <div className="flex items-center space-x-2 sm:space-x-3 text-xs shrink-0">
+            {/* Quick Community Channels Trigger */}
+            <button
+              onClick={() => setIsCommunityOpen(true)}
+              className="px-2.5 sm:px-3 py-1 bg-[#131733] hover:bg-[#1c224a] border border-purple-500/40 text-purple-200 hover:text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="Canales Oficiales: Discord y WhatsApp del Clan"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-purple-400" />
+              <span className="hidden sm:inline">Discord &amp; WhatsApp</span>
+              <span className="sm:hidden">Comunidad</span>
+            </button>
+
             <span className="hidden xl:inline text-[11px] font-mono tracking-widest text-slate-500 uppercase">
               MÁS QUE UN JUEGO, UNA COMUNIDAD
             </span>
@@ -575,9 +599,22 @@ export default function App() {
               onEditCharacter={(char) => setEditingCharacter(char)}
               onDeleteCharacter={handleDeleteCharacter}
               onOpenAddModal={() => setIsAddMemberOpen(true)}
+              onOpenCommunity={() => setIsCommunityOpen(true)}
               syncLog={syncLog}
               onRefresh={fetchSmashMuData}
               isSyncing={isSyncing}
+            />
+          )}
+
+          {activeTab === 'vault' && (
+            <VaultAccountsView
+              sharedAccounts={sharedAccounts}
+              currentMemberName={currentMember || officerName || 'UlmerMG'}
+              isOfficer={isOfficer}
+              onToggleStatus={handleToggleAccountStatus}
+              onDeleteAccount={handleDeleteAccount}
+              onOpenAddModal={() => setIsAddAccountOpen(true)}
+              onNavigateToTab={setActiveTab}
             />
           )}
 
@@ -595,13 +632,6 @@ export default function App() {
           )}
 
           {activeTab === 'events' && <EventsRadar />}
-
-          {activeTab === 'dkp' && (
-            <DKPView
-              isOfficer={isOfficer}
-              currentMemberName={currentMember || 'UlmerMG'}
-            />
-          )}
 
           {activeTab === 'auction' && (
             <AuctionView
@@ -655,6 +685,14 @@ export default function App() {
       <EquipmentInspectorModal
         characterName={inspectedCharacter}
         onClose={() => setInspectedCharacter(null)}
+      />
+
+      <CommunityModal
+        isOpen={isCommunityOpen}
+        onClose={() => setIsCommunityOpen(false)}
+        teamDiscordUrl={clanConfig.discordUrl}
+        smashMuDiscordUrl={clanConfig.smashMuDiscordUrl}
+        whatsappUrl={clanConfig.whatsappUrl}
       />
     </div>
   );
