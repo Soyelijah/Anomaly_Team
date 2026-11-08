@@ -309,119 +309,41 @@ export const PublicView: React.FC<PublicViewProps> = ({
         </div>
       </section>
 
-      {/* Recruitment Application Form */}
-      <section id="reclutamiento" className="bg-gradient-to-b from-[#0c101d] to-[#0a0d18] p-6 sm:p-8 rounded-2xl border border-purple-500/30 space-y-6">
-        <div>
-          <div className="inline-flex items-center space-x-1.5 text-xs font-semibold text-purple-300 bg-purple-500/10 px-3 py-1 rounded-full mb-2">
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Reclutamiento Abierto para Temporada 2026</span>
+      {/* Private Clan Command & Castle Siege Operations */}
+      <section className="bg-gradient-to-b from-[#0c101d] to-[#0a0d18] p-6 sm:p-8 rounded-2xl border border-purple-500/40 space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="inline-flex items-center space-x-1.5 text-xs font-semibold text-purple-300 bg-purple-500/10 px-3 py-1 rounded-full">
+              <Shield className="w-3.5 h-3.5 text-purple-400" />
+              <span>Operaciones Privadas del Clan ANOMALY</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-white">Comando Táctico &amp; Coordinación de Asedios</h2>
+            <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+              Plataforma restringida para los integrantes de Anomaly. Cada miembro sincroniza su personaje y su ID de login para registrar asistencias al Castle Siege, consultar ítems de guerra y pujar en las subastas internas.
+            </p>
           </div>
-          <h2 className="text-2xl font-black text-white">Únete a las Filas de Anomaly</h2>
-          <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-            Buscamos guerreros comprometidos para Castle Siege, eventos y farmeo en equipo. Requisito mínimo: 70 Resets o Elfas de energía / DLs con disponibilidad dominical.
-          </p>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <a
+              href="https://discord.gg/VqDMBHkGGe"
+              target="_blank"
+              rel="noreferrer"
+              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5 active:scale-95 cursor-pointer"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Discord ANOMALY</span>
+            </a>
+            <a
+              href="https://discord.gg/PTyyyEtKjm"
+              target="_blank"
+              rel="noreferrer"
+              className="px-4 py-2 bg-[#5865F2] hover:bg-[#4752c4] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5 active:scale-95 cursor-pointer"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Discord Smash MU</span>
+            </a>
+          </div>
         </div>
-
-        {submitted ? (
-          <div className="p-5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center space-x-3 text-emerald-300">
-            <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
-            <div>
-              <div className="font-bold text-sm">¡Postulación Enviada con Éxito!</div>
-              <div className="text-xs text-emerald-400/80">
-                El Guild Master revisará tu solicitud. También puedes unirte al Discord oficial para agilizar la prueba.
-              </div>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">Nombre de Personaje</label>
-              <input
-                type="text"
-                required
-                placeholder="Ej: ShadowKnight"
-                value={formData.characterName}
-                onChange={(e) => setFormData({ ...formData, characterName: e.target.value })}
-                className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">Clase del Personaje</label>
-              <select
-                value={formData.characterClass}
-                onChange={(e) => setFormData({ ...formData, characterClass: e.target.value as CharacterClass })}
-                className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500"
-              >
-                <option value="BK">Blade Knight (BK)</option>
-                <option value="SM">Soul Master (SM)</option>
-                <option value="ELF">Muse Elf (ELF)</option>
-                <option value="DL">Dark Lord (DL)</option>
-                <option value="MG">Magic Gladiator (MG)</option>
-                <option value="SUM">Summoner (SUM)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">Cantidad de Resets</label>
-              <input
-                type="number"
-                min={0}
-                max={500}
-                required
-                value={formData.resets}
-                onChange={(e) => setFormData({ ...formData, resets: parseInt(e.target.value) || 0 })}
-                className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">Nivel Actual</label>
-              <input
-                type="number"
-                min={1}
-                max={400}
-                required
-                value={formData.level}
-                onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) || 1 })}
-                className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">Discord o WhatsApp de Contacto</label>
-              <input
-                type="text"
-                required
-                placeholder="@tuusuario o +54 9 11..."
-                value={formData.contact}
-                onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">¿Por qué deseas entrar a Anomaly?</label>
-              <input
-                type="text"
-                placeholder="Ej: Busco party fija para Castle Siege y eventos..."
-                value={formData.motivation}
-                onChange={(e) => setFormData({ ...formData, motivation: e.target.value })}
-                className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500"
-              />
-            </div>
-
-            <div className="sm:col-span-2 md:col-span-3 flex justify-end pt-2">
-              <button
-                type="submit"
-                className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-violet-500 hover:from-purple-500 hover:to-violet-400 text-white font-bold rounded-xl transition-all shadow-md shadow-purple-600/30 flex items-center space-x-2"
-              >
-                <span>Enviar Postulación al Clan</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </form>
-        )}
       </section>
     </div>
   );

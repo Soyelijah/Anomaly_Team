@@ -24,7 +24,8 @@ import { CommunityModal } from './components/CommunityModal';
 import { LoginModal, EditMemberModal, AddMemberModal, AddVaultAccountModal } from './components/Modals';
 import { EquipmentInspectorModal } from './components/EquipmentInspectorModal';
 import { WorldClockBar } from './components/WorldClockBar';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, LogOut, UserCheck } from 'lucide-react';
+import { TeamAuthGate, TeamMemberSession } from './components/TeamAuthGate';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('clan');
@@ -84,6 +85,19 @@ export default function App() {
       }
     }
     return [];
+  });
+
+  // Private Team Session (Member registration & verification with Smash MU)
+  const [teamSession, setTeamSession] = useState<TeamMemberSession | null>(() => {
+    const saved = localStorage.getItem('anomaly_team_session');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   });
 
   const [isOfficer, setIsOfficer] = useState<boolean>(() => {
@@ -180,6 +194,18 @@ export default function App() {
         if (item.Name) {
           gsMap.set(item.Name.toLowerCase(), { item, rank: idx + 1 });
         }
+      });
+    } else {
+      // Resilient baseline fallback for Vercel / offline
+      setGearScoreRanking((current) => {
+        if (current.length > 0) return current;
+        return initialCharacters.map((c, i) => ({
+          Name: c.name,
+          Class: c.characterClass === 'BK' ? 16 : c.characterClass === 'SM' ? 0 : c.characterClass === 'ELF' ? 32 : c.characterClass === 'MG' ? 48 : c.characterClass === 'DL' ? 64 : 80,
+          GearScore: c.gearscore || 800,
+          Guild: c.guild || 'Anomaly',
+          rank: i + 1,
+        }));
       });
     }
 
@@ -347,6 +373,31 @@ export default function App() {
     fetchSmashMuData();
   }, [fetchSmashMuData]);
 
+  // Private Team Auth Handlers (Smash MU verification & linking)
+  const handleLoginSuccess = (session: TeamMemberSession) => {
+    setTeamSession(session);
+    localStorage.setItem('anomaly_team_session', JSON.stringify(session));
+    setCurrentMember(session.characterName);
+    localStorage.setItem('anomaly_current_member', session.characterName);
+    if (session.role === 'officer' || session.characterName.toLowerCase() === 'ulmermg') {
+      setIsOfficer(true);
+      setOfficerName(session.characterName);
+      localStorage.setItem('anomaly_is_officer', 'true');
+      localStorage.setItem('anomaly_officer_name', session.characterName);
+    }
+    addLog(
+      `[ACCESO] Cuenta Smash MU vinculada: ${session.characterName} (ID: ${session.muLoginId}, ${session.syncedData.resets} RR, ${session.syncedData.gearScore} GS).`
+    );
+  };
+
+  const handleSessionLogout = () => {
+    setTeamSession(null);
+    localStorage.removeItem('anomaly_team_session');
+    setIsOfficer(false);
+    localStorage.removeItem('anomaly_is_officer');
+    addLog(`Sesión del portal cerrada.`);
+  };
+
   // Auth Handlers (Officer & Member)
   const handleLogin = (user: string) => {
     setIsOfficer(true);
@@ -466,6 +517,17 @@ export default function App() {
     addLog(`Nueva postulación recibida de: ${app.characterName} (${app.characterClass}, ${app.resets} RR)`);
   };
 
+  // Private Gate: Member must be registered and verified with their Smash MU Login ID & Character
+  if (!teamSession) {
+    return (
+      <TeamAuthGate
+        onLoginSuccess={handleLoginSuccess}
+        teamDiscordUrl={clanConfig.discordUrl}
+        smashMuDiscordUrl={clanConfig.smashMuDiscordUrl}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#060810] text-slate-100 flex selection:bg-pink-600 selection:text-white">
       {/* Desktop Permanent Left Sidebar */}
@@ -480,6 +542,8 @@ export default function App() {
           isSyncing={isSyncing}
           onSync={fetchSmashMuData}
           onOpenCommunity={() => setIsCommunityOpen(true)}
+          session={teamSession}
+          onLogoutSession={handleSessionLogout}
         />
       </div>
 
@@ -513,6 +577,8 @@ export default function App() {
                 setMobileSidebarOpen(false);
               }}
               onClose={() => setMobileSidebarOpen(false)}
+              session={teamSession}
+              onLogoutSession={handleSessionLogout}
             />
           </div>
         </div>
@@ -533,14 +599,21 @@ export default function App() {
               <Menu className="w-5 h-5 text-pink-400" />
             </button>
 
+            {/* Connected Member ID & Character Status */}
             <div className="flex items-center space-x-2 text-xs font-mono truncate">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <span className="text-slate-300 font-semibold tracking-wide hidden sm:inline truncate">
-                Datos públicos de Smash MU
-              </span>
-              <span className="text-slate-300 font-semibold tracking-wide sm:hidden truncate">
-                Smash MU
-              </span>
+              <div className="flex items-center space-x-1.5 truncate">
+                <span className="text-slate-400 hidden md:inline text-[11px]">ID:</span>
+                <span className="text-purple-300 font-bold hidden md:inline">{teamSession.muLoginId}</span>
+                <span className="text-slate-600 hidden md:inline">•</span>
+                <span className="text-white font-bold">{teamSession.characterName}</span>
+                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-[10px] text-emerald-400 font-bold shrink-0">
+                  {teamSession.syncedData.resets} RR
+                </span>
+                <span className="px-1.5 py-0.5 rounded bg-purple-500/15 border border-purple-500/30 text-[10px] text-purple-300 font-bold shrink-0 hidden sm:inline">
+                  {teamSession.syncedData.gearScore} GS
+                </span>
+              </div>
             </div>
           </div>
 
@@ -552,16 +625,12 @@ export default function App() {
               title="Canales Oficiales: Discord y WhatsApp del Clan"
             >
               <MessageSquare className="w-3.5 h-3.5 text-purple-400" />
-              <span className="hidden sm:inline">Discord &amp; WhatsApp</span>
-              <span className="sm:hidden">Comunidad</span>
+              <span className="hidden sm:inline">Discord</span>
+              <span className="sm:hidden">Discord</span>
             </button>
 
-            <span className="hidden xl:inline text-[11px] font-mono tracking-widest text-slate-500 uppercase">
-              MÁS QUE UN JUEGO, UNA COMUNIDAD
-            </span>
-
             {/* Quick Live World Clock */}
-            <div className="bg-[#0b0e1c] border border-slate-800 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono text-purple-300 whitespace-nowrap">
+            <div className="bg-[#0b0e1c] border border-slate-800 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono text-purple-300 whitespace-nowrap hidden sm:block">
               GMT-5
             </div>
 
@@ -572,6 +641,16 @@ export default function App() {
                 <span className="hidden sm:inline">Sincronizando...</span>
               </span>
             )}
+
+            {/* Logout Button */}
+            <button
+              onClick={handleSessionLogout}
+              className="px-2.5 py-1 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-300 hover:text-white rounded-lg text-xs font-medium flex items-center space-x-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="Cerrar sesión de mi cuenta Smash MU"
+            >
+              <LogOut className="w-3.5 h-3.5 text-red-400" />
+              <span className="hidden sm:inline">Cerrar Sesión</span>
+            </button>
           </div>
         </header>
 

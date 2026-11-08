@@ -13,8 +13,10 @@ import {
   UserCheck,
   Package,
   MessageSquare,
+  LogOut,
 } from 'lucide-react';
 import { GuildMark } from './GuildMark';
+import { TeamMemberSession } from './TeamAuthGate';
 
 interface SidebarProps {
   activeTab: string;
@@ -27,6 +29,8 @@ interface SidebarProps {
   onSync: () => void;
   onOpenCommunity?: () => void;
   onClose?: () => void;
+  session?: TeamMemberSession | null;
+  onLogoutSession?: () => void;
 }
 
 interface NavItem {
@@ -57,6 +61,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSync,
   onOpenCommunity,
   onClose,
+  session,
+  onLogoutSession,
 }) => {
   const navSections: NavSection[] = [
     {
@@ -264,13 +270,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Bottom Area: Sync Status & Officer Access */}
+      {/* Bottom Area: Member Session, Sync Status & Officer Access */}
       <div className="p-3.5 border-t border-slate-800/70 bg-gradient-to-t from-[#0c0d1c] to-transparent space-y-2.5">
+        {/* Verified Team Member Card */}
+        {session && (
+          <div className="bg-[#0e1224] border border-emerald-500/30 rounded-xl p-2.5 text-xs shadow-sm space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-1.5 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="text-[10px] text-emerald-400 font-mono font-bold tracking-wider truncate">
+                  CUENTA VINCULADA
+                </span>
+              </div>
+              {onLogoutSession && (
+                <button
+                  onClick={onLogoutSession}
+                  className="text-[10px] text-slate-400 hover:text-red-400 transition-colors flex items-center space-x-1 shrink-0 ml-1 cursor-pointer"
+                  title="Cerrar sesión del portal"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span>Salir</span>
+                </button>
+              )}
+            </div>
+
+            <div className="truncate">
+              <div className="font-bold text-white text-xs truncate flex items-center space-x-1">
+                <span>{session.characterName}</span>
+                {session.syncedData.isMaster && (
+                  <span className="text-[9px] px-1 py-0.2 bg-amber-500/20 text-amber-300 rounded font-mono">
+                    GM
+                  </span>
+                )}
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono truncate">
+                ID MU: <span className="text-purple-300">{session.muLoginId}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[10px] font-mono pt-1 border-t border-slate-800/60 text-slate-300">
+              <span className="text-amber-300 font-bold">{session.syncedData.resets} RR</span>
+              <span className="text-pink-300">{session.syncedData.gearScore} GS</span>
+            </div>
+          </div>
+        )}
+
         {/* Quick Sync Button */}
         <button
           onClick={onSync}
           disabled={isSyncing}
-          className="w-full py-1.5 px-2.5 rounded-lg bg-black/40 hover:bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-mono flex items-center justify-between transition-colors disabled:opacity-50"
+          className="w-full py-1.5 px-2.5 rounded-lg bg-black/40 hover:bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-mono flex items-center justify-between transition-colors disabled:opacity-50 cursor-pointer"
           title="Sincronizar con API oficial de Smash MU"
         >
           <span className="flex items-center space-x-1.5 truncate">
@@ -292,7 +341,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <button
               onClick={onLogoutOfficer}
-              className="text-[10px] text-slate-400 hover:text-red-400 transition-colors underline shrink-0 ml-1.5"
+              className="text-[10px] text-slate-400 hover:text-red-400 transition-colors underline shrink-0 ml-1.5 cursor-pointer"
             >
               Salir
             </button>
@@ -300,7 +349,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ) : (
           <button
             onClick={onOpenLogin}
-            className="w-full py-2 px-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-xs font-semibold border border-slate-700/60 hover:border-purple-500/40 transition-all flex items-center justify-center space-x-2 shadow-sm"
+            className="w-full py-2 px-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-xs font-semibold border border-slate-700/60 hover:border-purple-500/40 transition-all flex items-center justify-center space-x-2 shadow-sm cursor-pointer"
           >
             <Crown className="w-3.5 h-3.5 text-amber-400" />
             <span>Acceso Oficial</span>

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "mem-1794112960388",
+    "muLoginId": "ulmer_leader",
+    "characterName": "UlmerMG",
+    "password": "admin",
+    "role": "officer",
+    "registeredAt": "2026-11-08T04:42:40.387Z",
+    "lastLogin": "2026-11-08T04:42:40.387Z",
+    "syncedData": {
+      "level": 37,
+      "resets": 196,
+      "gearScore": 851,
+      "className": "Magic Gladiator",
+      "guild": "Anomaly",
+      "isMaster": true,
+      "equippedCount": 9
+    }
+  }
+]
