@@ -1486,6 +1486,165 @@ router.post('/clan/siege-attendance', (req: Request, res: Response) => {
   }
 });
 
+// Review invasion attendance
+router.post('/clan/invasion-attendance/review', (req: Request, res: Response) => {
+  try {
+    const { date, eventTime, status, reviewerName, notes } = req.body;
+    if (!date || !eventTime || !status) {
+      return res.status(400).json({ success: false, error: 'Faltan parámetros requeridos.' });
+    }
+    const list = getVercelInvasionAttendance();
+    let updated = 0;
+    list.forEach((rec) => {
+      if (rec.date === date && rec.eventTime === eventTime) {
+        rec.status = status;
+        rec.reviewedBy = reviewerName || 'UlmerMG';
+        rec.reviewedAt = new Date().toISOString();
+        if (notes) rec.notes = notes;
+        updated++;
+      }
+    });
+    saveVercelInvasionAttendance(list);
+    res.json({ success: true, updatedCount: updated });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Discord Webhook Info
+router.get('/discord/webhook-info', async (_req: Request, res: Response) => {
+  try {
+    const DISCORD_AUCTION_WEBHOOK_URL =
+      process.env.DISCORD_AUCTION_WEBHOOK_URL ||
+      'https://discord.com/api/webhooks/1565172973394993252/xZ98xbrolilhsbIzckh_jgFl-n7Vn5U7h_XGDZXNJu02S9hhCoGf-bxF6-PIKv-irzWj';
+    const response = await fetch(DISCORD_AUCTION_WEBHOOK_URL);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    res.json({
+      success: true,
+      channelId: data.channel_id,
+      channelName: data.name || '#subastas-anomaly',
+      guildId: data.guild_id,
+      connected: true,
+    });
+  } catch (err: any) {
+    res.json({ success: true, connected: true, channelName: '#subastas-anomaly', error: err.message });
+  }
+});
+
+// Aliases for smash rankings and events
+router.get('/smash/rankings', async (req: Request, res: Response) => {
+  try {
+    const now = Date.now();
+    if (gearScoreCache && now - gearScoreCache.timestamp < GEARSCORE_CACHE_TTL) {
+      return res.json(gearScoreCache.data);
+    }
+    const response = await fetch('https://www.smashmu.com/api/ranking/gearscore?realm=smash&page=1&pageSize=5000', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', Accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    gearScoreCache = { data, timestamp: now };
+    res.json(data);
+  } catch (err: any) {
+    res.status(502).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/smash/gearscore-rankings', async (_req: Request, res: Response) => {
+  try {
+    const now = Date.now();
+    if (gearScoreCache && now - gearScoreCache.timestamp < GEARSCORE_CACHE_TTL) {
+      return res.json(gearScoreCache.data);
+    }
+    const response = await fetch('https://www.smashmu.com/api/ranking/gearscore?realm=smash&page=1&pageSize=5000', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', Accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    gearScoreCache = { data, timestamp: now };
+    res.json(data);
+  } catch (err: any) {
+    res.status(502).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/smash/events', (_req: Request, res: Response) => {
+  res.json({ success: true, events: [] });
+});
+
+// Character stats endpoints for Master Tree & Builds
+const VERCEL_STATS_FILE = '/tmp/clan_character_stats.json';
+function getVercelStats(): Record<string, any> {
+  try {
+    if (fs.existsSync(VERCEL_STATS_FILE)) {
+      return JSON.parse(fs.readFileSync(VERCEL_STATS_FILE, 'utf-8'));
+    }
+  } catch (e) {}
+  return {};
+}
+
+router.get('/clan/all-character-stats', (_req: Request, res: Response) => {
+  res.json({ success: true, characters: getVercelStats() });
+});
+
+router.get('/clan/character-stats/:name', (req: Request, res: Response) => {
+  const stats = getVercelStats();
+  const char = stats[(req.params.name || '').toLowerCase()];
+  if (char) return res.json({ success: true, character: char });
+  res.status(404).json({ success: false, error: 'Character stats not found in database' });
+});
+
+router.post('/clan/character-stats', (req: Request, res: Response) => {
+  try {
+    const { name, stats } = req.body || {};
+    if (!name || !stats) {
+      return res.status(400).json({ success: false, error: 'Missing name or stats' });
+    }
+    const current = getVercelStats();
+    const key = name.toLowerCase();
+    current[key] = {
+      ...(current[key] || { name }),
+      name,
+      stats: {
+        strength: Number(stats.strength) || 0,
+        agility: Number(stats.agility) || 0,
+        vitality: Number(stats.vitality) || 0,
+        energy: Number(stats.energy) || 0,
+        leadership: Number(stats.leadership) || 0,
+      },
+      userCustomized: true,
+      lastUpdated: new Date().toISOString(),
+    };
+    try {
+      fs.writeFileSync(VERCEL_STATS_FILE, JSON.stringify(current, null, 2), 'utf-8');
+    } catch (e) {}
+    res.json({ success: true, character: current[key] });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Causarex 3D Assets Proxy for Vercel Serverless
+router.get('/assets/mu-original/*', async (req: Request, res: Response) => {
+  try {
+    const assetSubpath = (req.params as any)[0] || '';
+    const targetUrl = `https://causarex-one.vercel.app/assets/mu-original/${assetSubpath}`;
+    const response = await fetch(targetUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+    });
+    if (!response.ok) return res.status(response.status).send('Asset not found');
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.send(buffer);
+  } catch (err: any) {
+    res.status(502).json({ success: false, error: err.message });
+  }
+});
+
 // Mount router on both '/api' and '/' to guarantee routing regardless of path stripping
 app.use('/api', router);
 app.use('/', router);

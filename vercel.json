@@ -5,6 +5,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/assets/mu-original/(.*)",
+      "destination": "https://causarex-one.vercel.app/assets/mu-original/$1"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api"
     },
