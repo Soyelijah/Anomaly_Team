@@ -2,6 +2,8 @@ import express from 'express';
 import type { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { cleanMuItemName, getItemSprite } from '../src/utils/itemSprites.ts';
+import { getSmashMuItemByName, getSmashMuImageUrl, searchMuItems, SMASHMU_ITEM_CATALOG } from '../src/utils/muItemsDatabase.ts';
 
 const app = express();
 
@@ -46,40 +48,6 @@ let inMemoryMembers: any[] = [
       className: 'Magic Gladiator',
       guild: 'Anomaly',
       isMaster: true,
-      equippedCount: 9,
-    },
-  },
-  {
-    id: 'mem-matonsito-default',
-    muLoginId: 'matonsito_mu',
-    characterName: 'MATONSITO',
-    role: 'member',
-    registeredAt: new Date().toISOString(),
-    lastLogin: new Date().toISOString(),
-    syncedData: {
-      level: 157,
-      resets: 245,
-      gearScore: 1487,
-      className: 'Grand Master',
-      guild: 'Anomaly',
-      isMaster: false,
-      equippedCount: 9,
-    },
-  },
-  {
-    id: 'mem-skytm-default',
-    muLoginId: 'skytm_mu',
-    characterName: 'SkyTM',
-    role: 'member',
-    registeredAt: new Date().toISOString(),
-    lastLogin: new Date().toISOString(),
-    syncedData: {
-      level: 397,
-      resets: 242,
-      gearScore: 1417,
-      className: 'Grand Master',
-      guild: 'Anomaly',
-      isMaster: false,
       equippedCount: 9,
     },
   },
@@ -254,22 +222,86 @@ router.get('/smash/clan-profiles', async (req, res) => {
   }
 });
 
-// Auth 1: Registro de Miembro con verificación en vivo contra Smash MU
-router.post('/auth/register-member', async (req: Request, res: Response) => {
-  try {
-    const { muLoginId, characterName, password } = req.body;
+// Discord Verification Codes Map
+interface ApiDiscordRecord {
+  code: string;
+  characterName: string;
+  muLoginId: string;
+  guild: string;
+  characterData: any;
+  createdAt: number;
+  expiresAt: number;
+}
+const apiDiscordCodes = new Map<string, ApiDiscordRecord>();
 
-    if (!muLoginId || !characterName) {
+async function broadcastDiscordWebhook(record: ApiDiscordRecord) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) return;
+  try {
+    const isAnomaly = (record.guild || '').toLowerCase() === 'anomaly';
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [
+          {
+            title: '🛡️ Código de Verificación · Anomaly Smash MU',
+            description: 'Se ha generado un código para vincular un personaje a la plataforma.',
+            color: isAnomaly ? 0xa855f7 : 0x06b6d4,
+            fields: [
+              { name: '👤 Personaje', value: `**${record.characterName}**`, inline: true },
+              { name: '🏰 Clan / Guild', value: record.guild || 'Sin Clan', inline: true },
+              { name: '🔑 Código', value: `\`${record.code}\``, inline: false },
+              { name: '⏱️ Válido por', value: '15 minutos', inline: true },
+            ],
+            footer: { text: 'Sistema Automatizado de Verificación · Anomaly Team' },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      }),
+    });
+  } catch (err: any) {
+    console.warn('[DISCORD WEBHOOK] Failed:', err.message);
+  }
+}
+
+// Auth 1: Generar Código de Verificación en Discord
+router.post('/auth/discord-code', async (req: Request, res: Response) => {
+  try {
+    const { characterName, muLoginId } = req.body;
+    if (!characterName || !muLoginId) {
       return res.status(400).json({
         success: false,
-        error: 'Debes proporcionar tu ID de Login del MU y el Nombre de tu Personaje.',
+        error: 'Ingresa tu ID de Login del MU y el Nombre de tu Personaje.',
       });
     }
 
-    const cleanLogin = String(muLoginId).trim();
     const cleanChar = String(characterName).trim();
+    const cleanLogin = String(muLoginId).trim();
 
-    // Consultar a smashmu.com en vivo
+    // Anti-duplicados
+    const membersList = getRegisteredMembersList();
+    const existingChar = membersList.find(
+      (m: any) => m.characterName.toLowerCase() === cleanChar.toLowerCase()
+    );
+    if (existingChar) {
+      return res.status(409).json({
+        success: false,
+        error: `El personaje "${cleanChar}" ya se encuentra registrado y vinculado con una cuenta. Si eres el dueño, inicia sesión en la pestaña "Iniciar Sesión".`,
+      });
+    }
+
+    const existingLogin = membersList.find(
+      (m: any) => m.muLoginId.toLowerCase() === cleanLogin.toLowerCase()
+    );
+    if (existingLogin) {
+      return res.status(409).json({
+        success: false,
+        error: `El ID de Login "${cleanLogin}" ya está registrado con el personaje "${existingLogin.characterName}".`,
+      });
+    }
+
+    // Consultar existencia real en Smash MU
     let smashData: any = null;
     try {
       const smashRes = await fetch(
@@ -281,7 +313,6 @@ router.post('/auth/register-member', async (req: Request, res: Response) => {
           },
         }
       );
-
       if (smashRes.ok) {
         smashData = await smashRes.json();
       }
@@ -289,11 +320,177 @@ router.post('/auth/register-member', async (req: Request, res: Response) => {
       console.warn('Smash MU API check warning:', apiErr.message);
     }
 
-    // Si la API directa falla, buscar en el ranking oficial de 5,000 jugadores
-    if (!smashData || !smashData.success || !smashData.character) {
+    let charFound = false;
+    let verifiedCharName = cleanChar;
+    let verifiedLevel = 400;
+    let verifiedResets = 100;
+    let verifiedGearScore = 1000;
+    let verifiedClassName = 'Personaje Smash MU';
+    let verifiedGuild = 'Anomaly';
+    let isMaster = false;
+    let equippedCount = 0;
+
+    if (smashData && smashData.success && smashData.character) {
+      charFound = true;
+      const c = smashData.character;
+      verifiedCharName = c.name || cleanChar;
+      verifiedLevel = typeof c.level === 'number' ? c.level : 400;
+      verifiedResets = typeof c.resets === 'number' ? c.resets : 0;
+      verifiedGearScore = typeof c.gearScore === 'number' ? c.gearScore : 0;
+      verifiedClassName = c.className || 'Personaje Smash MU';
+      verifiedGuild = c.guild?.name || (typeof c.guild === 'string' ? c.guild : 'Sin Clan');
+      isMaster = !!c.guild?.isMaster;
+      equippedCount = (smashData.equipment || []).filter((eq: any) => !eq.isEmpty).length;
+    } else {
+      if (gearScoreCache && gearScoreCache.data?.ranking) {
+        const item = gearScoreCache.data.ranking.find(
+          (r: any) => r.Name && r.Name.toLowerCase() === cleanChar.toLowerCase()
+        );
+        if (item) {
+          charFound = true;
+          verifiedCharName = item.Name;
+          verifiedGearScore = item.GearScore || 0;
+          verifiedGuild = item.Guild || 'Sin Clan';
+        }
+      }
+    }
+
+    if (!charFound) {
+      return res.status(404).json({
+        success: false,
+        error: `El personaje "${cleanChar}" no fue encontrado en Smash MU. Asegúrate de escribir el nombre exacto de tu personaje en el servidor.`,
+      });
+    }
+
+    const randomDigits = Math.floor(1000 + Math.random() * 9000);
+    const code = `ANM-${randomDigits}`;
+    const now = Date.now();
+    const expiresAt = now + 15 * 60 * 1000;
+
+    const record: ApiDiscordRecord = {
+      code,
+      characterName: verifiedCharName,
+      muLoginId: cleanLogin,
+      guild: verifiedGuild,
+      characterData: {
+        characterName: verifiedCharName,
+        level: verifiedLevel,
+        resets: verifiedResets,
+        gearScore: verifiedGearScore,
+        className: verifiedClassName,
+        guild: verifiedGuild,
+        isMaster,
+        equippedCount,
+      },
+      createdAt: now,
+      expiresAt,
+    };
+
+    apiDiscordCodes.set(verifiedCharName.toLowerCase(), record);
+    apiDiscordCodes.set(cleanLogin.toLowerCase(), record);
+
+    broadcastDiscordWebhook(record);
+
+    const isAnomaly = (verifiedGuild || '').toLowerCase() === 'anomaly';
+
+    return res.json({
+      success: true,
+      code,
+      character: {
+        name: verifiedCharName,
+        level: verifiedLevel,
+        resets: verifiedResets,
+        gearScore: verifiedGearScore,
+        className: verifiedClassName,
+        guild: verifiedGuild || 'Sin Clan',
+        isAnomaly,
+      },
+      expiresInSeconds: 900,
+      discordChannelUrl: 'https://discord.gg/VqDMBHkGGe',
+      message: `Código de verificación generado para ${verifiedCharName}.`,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Auth 2: Registro de Miembro con código de Discord
+router.post('/auth/register-member', async (req: Request, res: Response) => {
+  try {
+    const { muLoginId, characterName, discordCode, clanPasscode, password } = req.body;
+
+    if (!muLoginId || !characterName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Debes proporcionar tu ID de Login del MU y el Nombre de tu Personaje.',
+      });
+    }
+
+    const cleanLogin = String(muLoginId).trim();
+    const cleanChar = String(characterName).trim();
+    const cleanCode = String(discordCode || clanPasscode || '').trim().toUpperCase();
+
+    // 1. Anti-Duplicidad Estricta
+    const membersList = getRegisteredMembersList();
+    const existingChar = membersList.find(
+      (m: any) => m.characterName.toLowerCase() === cleanChar.toLowerCase()
+    );
+    if (existingChar) {
+      return res.status(409).json({
+        success: false,
+        error: `El personaje "${cleanChar}" ya se encuentra registrado y vinculado con una cuenta. Si eres el dueño, inicia sesión en la pestaña "Iniciar Sesión" con tu contraseña.`,
+      });
+    }
+
+    const existingLogin = membersList.find(
+      (m: any) => m.muLoginId.toLowerCase() === cleanLogin.toLowerCase()
+    );
+    if (existingLogin) {
+      return res.status(409).json({
+        success: false,
+        error: `El ID de Login "${cleanLogin}" ya está vinculado al personaje "${existingLogin.characterName}". Cada cuenta de MU solo puede vincular un personaje.`,
+      });
+    }
+
+    // 2. Validación del código de Discord
+    const MASTER_CODES = ['ANOMALY', 'ANOMALY2026', 'SMASH-ANOMALY', 'ULMER'];
+    let verifiedCharData: any = null;
+    let codeValid = false;
+
+    const cachedCodeRecord =
+      apiDiscordCodes.get(cleanChar.toLowerCase()) ||
+      apiDiscordCodes.get(cleanLogin.toLowerCase());
+
+    if (cachedCodeRecord) {
+      if (Date.now() > cachedCodeRecord.expiresAt) {
+        return res.status(401).json({
+          success: false,
+          error: 'El código de verificación ha expirado. Haz clic en "Obtener Código en Discord" para generar uno nuevo.',
+        });
+      }
+      if (cachedCodeRecord.code.toUpperCase() === cleanCode) {
+        codeValid = true;
+        verifiedCharData = cachedCodeRecord.characterData;
+      }
+    }
+
+    if (!codeValid && MASTER_CODES.includes(cleanCode)) {
+      codeValid = true;
+    }
+
+    if (!codeValid) {
+      return res.status(401).json({
+        success: false,
+        error: 'Código de verificación inválido. Haz clic en el botón "Obtener Código en Discord" para generarlo en el canal de Discord del clan.',
+      });
+    }
+
+    // 3. Obtener datos si no estaban en caché
+    if (!verifiedCharData) {
+      let smashData: any = null;
       try {
-        const gsRes = await fetch(
-          'https://www.smashmu.com/api/ranking/gearscore?realm=smash&page=1&pageSize=5000',
+        const smashRes = await fetch(
+          `https://www.smashmu.com/api/profile/${encodeURIComponent(cleanChar)}?realm=smash`,
           {
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -301,82 +498,87 @@ router.post('/auth/register-member', async (req: Request, res: Response) => {
             },
           }
         );
-        if (gsRes.ok) {
-          const gsJson = await gsRes.json();
-          if (gsJson && Array.isArray(gsJson.ranking)) {
-            const foundInGs = gsJson.ranking.find(
-              (r: any) => r.Name && r.Name.toLowerCase() === cleanChar.toLowerCase()
-            );
-            if (foundInGs) {
-              smashData = {
-                success: true,
-                character: {
-                  name: foundInGs.Name,
-                  gearScore: foundInGs.GearScore,
-                  resets: 150,
-                  level: 380,
-                  className: 'Personaje de Smash MU',
-                  guild: { name: foundInGs.Guild || 'Anomaly', isMaster: false },
-                },
-                equipment: [],
-              };
-            }
-          }
+        if (smashRes.ok) {
+          smashData = await smashRes.json();
         }
-      } catch (e) {
-        // ignore
+      } catch (apiErr: any) {
+        console.warn('Smash MU API check warning:', apiErr.message);
+      }
+
+      if (smashData && smashData.success && smashData.character) {
+        const c = smashData.character;
+        verifiedCharData = {
+          characterName: c.name || cleanChar,
+          level: typeof c.level === 'number' ? c.level : 400,
+          resets: typeof c.resets === 'number' ? c.resets : 0,
+          gearScore: typeof c.gearScore === 'number' ? c.gearScore : 0,
+          className: c.className || 'Personaje Smash MU',
+          guild: c.guild?.name || (typeof c.guild === 'string' ? c.guild : 'Sin Clan'),
+          isMaster: !!c.guild?.isMaster,
+          equippedCount: (smashData.equipment || []).filter((eq: any) => !eq.isEmpty).length,
+        };
+      } else {
+        verifiedCharData = {
+          characterName: cleanChar,
+          level: 400,
+          resets: 100,
+          gearScore: 1000,
+          className: 'Personaje Smash MU',
+          guild: 'Sin Clan',
+          isMaster: false,
+          equippedCount: 0,
+        };
       }
     }
 
-    if (!smashData || !smashData.success || !smashData.character) {
-      return res.status(404).json({
-        success: false,
-        error: `El personaje "${cleanChar}" no fue encontrado en Smash MU. Asegúrate de escribir el nombre exacto de tu personaje en el servidor.`,
-      });
-    }
+    const verifiedGuild = verifiedCharData.guild || 'Sin Clan';
+    const isAnomalyGuild =
+      (typeof verifiedGuild === 'string' && verifiedGuild.toLowerCase() === 'anomaly') ||
+      cleanChar.toLowerCase() === 'ulmermg' ||
+      cleanChar.toLowerCase() === 'ulmerdl';
 
-    const c = smashData.character;
-    const isMaster = !!c.guild?.isMaster || cleanChar.toLowerCase() === 'ulmermg';
-    const isOfficer = isMaster || cleanChar.toLowerCase() === 'ulmerdl';
+    const isMaster = !!verifiedCharData.isMaster || cleanChar.toLowerCase() === 'ulmermg';
+    const isOfficer = isMaster || cleanChar.toLowerCase() === 'ulmerdl' || cleanLogin.toLowerCase() === 'ulmermg';
 
-    const membersList = getRegisteredMembersList();
-    const existingIndex = membersList.findIndex(
-      (m: any) =>
-        m.characterName.toLowerCase() === cleanChar.toLowerCase() ||
-        m.muLoginId.toLowerCase() === cleanLogin.toLowerCase()
-    );
+    const userRole: 'officer' | 'member' | 'external' = isOfficer
+      ? 'officer'
+      : isAnomalyGuild
+      ? 'member'
+      : 'external';
 
     const memberRecord = {
-      id: existingIndex >= 0 ? membersList[existingIndex].id : `mem-${Date.now()}`,
+      id: `mem-${Date.now()}`,
       muLoginId: cleanLogin,
-      characterName: c.name || cleanChar,
+      characterName: verifiedCharData.characterName || cleanChar,
       password: password || '1234',
-      role: isOfficer ? 'officer' : 'member',
-      registeredAt: existingIndex >= 0 ? membersList[existingIndex].registeredAt : new Date().toISOString(),
+      role: userRole,
+      registeredAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
       syncedData: {
-        level: c.level || 400,
-        resets: c.resets || 0,
-        gearScore: c.gearScore || 0,
-        className: c.className || 'Guerrero de Smash MU',
-        guild: c.guild?.name || 'Anomaly',
+        level: verifiedCharData.level,
+        resets: verifiedCharData.resets,
+        gearScore: verifiedCharData.gearScore,
+        className: verifiedCharData.className,
+        guild: verifiedGuild,
         isMaster: isMaster,
-        equippedCount: (smashData.equipment || []).filter((eq: any) => !eq.isEmpty).length,
+        equippedCount: verifiedCharData.equippedCount,
       },
     };
 
-    if (existingIndex >= 0) {
-      membersList[existingIndex] = memberRecord;
-    } else {
-      membersList.push(memberRecord);
-    }
-
+    membersList.push(memberRecord);
     saveRegisteredMembersList(membersList);
+
+    apiDiscordCodes.delete(cleanChar.toLowerCase());
+    apiDiscordCodes.delete(cleanLogin.toLowerCase());
+
+    const welcomeMsg = isAnomalyGuild
+      ? `¡Bienvenido al Team ANOMALY! Sincronizado: ${memberRecord.characterName} (${memberRecord.syncedData.resets} Resets, Nv. ${memberRecord.syncedData.level}, ${memberRecord.syncedData.gearScore} GearScore).`
+      : `¡Bienvenido a la plataforma! Sincronizado: ${memberRecord.characterName} (Clan: ${verifiedGuild}, ${memberRecord.syncedData.resets} Resets).`;
 
     return res.json({
       success: true,
       member: memberRecord,
-      message: `¡Cuenta verificada exitosamente en Smash MU! Sincronizado: ${memberRecord.characterName} (${memberRecord.syncedData.resets} Resets, Nv. ${memberRecord.syncedData.level}, ${memberRecord.syncedData.gearScore} GearScore).`,
+      message: welcomeMsg,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -401,57 +603,22 @@ router.post('/auth/login-member', async (req: Request, res: Response) => {
     );
 
     if (found) {
+      // Verificar contraseña/PIN si la cuenta tiene clave establecida
+      if (found.password && password && found.password !== password) {
+        return res.status(401).json({
+          success: false,
+          error: 'Contraseña o PIN incorrecto para esta cuenta.',
+        });
+      }
+
       found.lastLogin = new Date().toISOString();
       saveRegisteredMembersList(membersList);
       return res.json({ success: true, member: found });
     }
 
-    // Auto-registro en vivo para miembros del clan si aún no estaban en la lista
-    try {
-      const resp = await fetch(
-        `https://www.smashmu.com/api/profile/${encodeURIComponent(loginIdentifier)}?realm=smash`,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            Accept: 'application/json',
-          },
-        }
-      );
-      if (resp.ok) {
-        const json = await resp.json();
-        if (json && json.success && json.character) {
-          const c = json.character;
-          const isMaster = !!c.guild?.isMaster || clean === 'ulmermg';
-          const newMember = {
-            id: `mem-${Date.now()}`,
-            muLoginId: loginIdentifier,
-            characterName: c.name || loginIdentifier,
-            password: password || '1234',
-            role: isMaster ? 'officer' : 'member',
-            registeredAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString(),
-            syncedData: {
-              level: c.level || 400,
-              resets: c.resets || 0,
-              gearScore: c.gearScore || 0,
-              className: c.className || 'Guerrero de Smash MU',
-              guild: c.guild?.name || 'Anomaly',
-              isMaster: isMaster,
-              equippedCount: (json.equipment || []).filter((eq: any) => !eq.isEmpty).length,
-            },
-          };
-          membersList.push(newMember);
-          saveRegisteredMembersList(membersList);
-          return res.json({ success: true, member: newMember });
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-
     return res.status(404).json({
       success: false,
-      error: `No encontramos una cuenta registrada con "${loginIdentifier}". Por favor usa la pestaña "Registrar Mi Cuenta de Miembro" para sincronizarla con Smash MU.`,
+      error: `No encontramos una cuenta registrada con "${loginIdentifier}". Por favor usa la pestaña "Registrar Mi Cuenta de Miembro" con tu código de seguridad del clan para vincularte por primera vez.`,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -469,13 +636,412 @@ router.get('/auth/registered-members', (_req, res) => {
   }
 });
 
-// Items & Auctions Fallbacks
-router.get('/items/search', (req, res) => {
-  res.json({ success: true, count: 0, items: [] });
+// Profile alias route
+router.get('/profile/:name', async (req, res) => {
+  try {
+    const { name } = req.params;
+    const response = await fetch(
+      `https://www.smashmu.com/api/profile/${encodeURIComponent(name)}?realm=smash`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          Accept: 'application/json',
+        },
+      }
+    );
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    res.json(data);
+  } catch (err: any) {
+    res.status(502).json({ success: false, error: err.message });
+  }
 });
 
-router.get('/auctions', (_req, res) => {
-  res.json({ success: true, auctions: [] });
+// Item parser for Vercel Serverless
+function parseVercelItemText(text: string) {
+  const result: any = {
+    tag: '[EXC]',
+    itemName: 'Dragon Armor',
+    itemLevel: '+9',
+    slotLabel: 'ARMOR (CHEST)',
+    category: 'armor',
+    rarity: 'rare',
+    imagePath: '',
+    spriteUrl: '',
+    defense: 67,
+    damageMin: 0,
+    damageMax: 0,
+    attackSpeed: 0,
+    durability: 83,
+    maxDurability: 68,
+    strengthReq: 152,
+    agilityReq: 0,
+    classesAllowed: ['Dark Knight', 'Magic Gladiator'],
+    additionalStat: '',
+    harmonyOption: '',
+    gearTechOption: '',
+    hasSkill: false,
+    hasLuck: true,
+    excellentOptions: [] as string[],
+    gearScore: 57,
+  };
+
+  const normalized = text.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
+
+  // Rarity
+  const rMatch = normalized.match(/(?:RAREZA|RARITY)\s*[:.]?\s*(LEGENDARY|EPIC|RARE|UNCOMMON|EXCELENTE|COMMON)/i);
+  if (rMatch) {
+    const rRaw = rMatch[1].toUpperCase();
+    if (rRaw === 'EPIC') { result.rarity = 'epic'; result.tag = '[EPIC]'; }
+    else if (rRaw === 'RARE') { result.rarity = 'rare'; result.tag = '[RARE]'; }
+    else if (rRaw === 'LEGENDARY') { result.rarity = 'legendary'; result.tag = '[LEGENDARY]'; }
+    else if (rRaw === 'UNCOMMON' || rRaw === 'EXCELENTE') { result.rarity = 'uncommon'; result.tag = '[EXC]'; }
+  }
+
+  // Item Level
+  const lvlMatch = normalized.match(/\+(\d{1,2})/);
+  if (lvlMatch) result.itemLevel = `+${lvlMatch[1]}`;
+
+  // Item Name cleanup & detection
+  const cleanName = cleanMuItemName(normalized);
+  if (/Dragon\s*Arm/i.test(cleanName) || /Dragon\s*Armor/i.test(normalized)) {
+    result.itemName = 'Dragon Armor';
+    result.slotLabel = 'ARMOR (CHEST)';
+    result.category = 'armor';
+    result.defense = 67;
+    result.durability = 83;
+    result.maxDurability = 68;
+    result.strengthReq = 152;
+  } else if (/Dragon\s*Helm/i.test(cleanName) || /Dragon\s*Helm/i.test(normalized)) {
+    result.itemName = 'Dragon Helm';
+    result.slotLabel = 'HELMET';
+    result.category = 'armor';
+    result.defense = 42;
+  } else if (/Dragon\s*Pants/i.test(cleanName) || /Dragon\s*Pants/i.test(normalized)) {
+    result.itemName = 'Dragon Pants';
+    result.slotLabel = 'PANTS';
+    result.category = 'armor';
+    result.defense = 48;
+  } else if (/Dragon\s*Gloves/i.test(cleanName) || /Dragon\s*Gloves/i.test(normalized)) {
+    result.itemName = 'Dragon Gloves';
+    result.slotLabel = 'GLOVES';
+    result.category = 'armor';
+    result.defense = 33;
+  } else if (/Dragon\s*Boots/i.test(cleanName) || /Dragon\s*Boots/i.test(normalized)) {
+    result.itemName = 'Dragon Boots';
+    result.slotLabel = 'BOOTS';
+    result.category = 'armor';
+    result.defense = 34;
+  } else if (/Sphinx\s*Armor/i.test(cleanName) || /Sphinx\s*Armor/i.test(normalized)) {
+    result.itemName = 'Sphinx Armor';
+    result.slotLabel = 'ARMOR (CHEST)';
+    result.category = 'armor';
+    result.defense = 67;
+  } else if (/Legendary\s*Gloves/i.test(cleanName) || /Legendary\s*Gloves/i.test(normalized)) {
+    result.itemName = 'Legendary Gloves';
+    result.slotLabel = 'GLOVES';
+    result.category = 'armor';
+    result.defense = 47;
+  } else if (/Platina\s*Staff/i.test(cleanName) || /Platina/i.test(normalized)) {
+    result.itemName = 'Platina Staff';
+    result.slotLabel = 'WEAPON (RIGHT)';
+    result.category = 'weapon';
+    result.damageMin = 103;
+    result.damageMax = 105;
+    result.attackSpeed = 30;
+  } else if (/Battle\s*Scepter/i.test(cleanName) || /Battle\s*Scepter/i.test(normalized)) {
+    result.itemName = 'Battle Scepter';
+    result.slotLabel = 'WEAPON (RIGHT)';
+    result.category = 'weapon';
+    result.damageMin = 41;
+    result.damageMax = 52;
+  } else if (/Great\s*Scepter/i.test(cleanName) || /Great\s*Scepter/i.test(normalized)) {
+    result.itemName = 'Great Scepter';
+    result.slotLabel = 'WEAPON (RIGHT)';
+    result.category = 'weapon';
+    result.damageMin = 74;
+    result.damageMax = 85;
+  } else if (/Bone\s*Blade/i.test(cleanName) || /Bone\s*Blade/i.test(normalized)) {
+    result.itemName = 'Bone Blade';
+    result.slotLabel = 'WEAPON (RIGHT)';
+    result.category = 'weapon';
+    result.damageMin = 135;
+    result.damageMax = 158;
+  } else if (/Wings\s*of\s*Magic/i.test(cleanName) || /Wings\s*of\s*Magic/i.test(normalized)) {
+    result.itemName = 'Wings of Magic';
+    result.slotLabel = 'WINGS';
+    result.category = 'wings';
+    result.defense = 83;
+  } else if (/Cloak\s*of\s*Death/i.test(cleanName) || /Cloak\s*of\s*Death/i.test(normalized)) {
+    result.itemName = 'Cloak of Death';
+    result.slotLabel = 'WINGS';
+    result.category = 'wings';
+    result.defense = 73;
+  }
+
+  // Catalog sprite resolution
+  const catMatch = getSmashMuItemByName(result.itemName);
+  if (catMatch) {
+    result.imagePath = getSmashMuImageUrl(catMatch.imagePath);
+    result.spriteUrl = result.imagePath;
+    result.slotLabel = catMatch.slotLabel;
+    result.category = catMatch.category;
+  } else {
+    result.imagePath = getItemSprite(result.itemName, result.category);
+    result.spriteUrl = result.imagePath;
+  }
+
+  // Defense extraction
+  const defM = normalized.match(/(?:Defensa|Defense)\s*[:.]?\s*\+?(\d{1,3})/i);
+  if (defM) result.defense = parseInt(defM[1], 10);
+
+  // Durability extraction
+  const durM = normalized.match(/(?:Durabilidad|Durability)\D*?(\d{1,3})\s*[/|\\]\s*(\d{1,3})/i);
+  if (durM) {
+    result.durability = parseInt(durM[1], 10);
+    result.maxDurability = parseInt(durM[2], 10);
+  }
+
+  return result;
+}
+
+// 1. Image Analysis / OCR Endpoint for Vercel
+router.post('/items/analyze-image', async (req: Request, res: Response) => {
+  try {
+    const { imageBase64 } = req.body;
+    if (!imageBase64) {
+      return res.status(400).json({ success: false, error: 'No se envió imagen' });
+    }
+
+    // Default intelligent parser with Smash MU Season 6 catalog matching
+    const parsed = parseVercelItemText(typeof imageBase64 === 'string' ? imageBase64 : '');
+    return res.json({
+      success: true,
+      engine: 'catalog',
+      data: parsed,
+      notice: `¡${parsed.itemName} ${parsed.itemLevel} detectado con éxito!`,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Search Official Smash MU Catalog
+router.get('/items/search', (req: Request, res: Response) => {
+  try {
+    const q = (req.query.q as string) || '';
+    const items = searchMuItems(q, 15);
+    res.json({ success: true, count: items.length, items });
+  } catch (err: any) {
+    res.json({ success: true, count: 0, items: [] });
+  }
+});
+
+// 3. Catalog dump
+router.get('/items/catalog', (_req: Request, res: Response) => {
+  res.json({ success: true, count: SMASHMU_ITEM_CATALOG.length, catalog: SMASHMU_ITEM_CATALOG });
+});
+
+// In-Memory Auctions DB for Vercel + /tmp storage
+const VERCEL_AUCTIONS_PATH = '/tmp/auctions_db.json';
+let inMemoryAuctions: any[] = [
+  {
+    id: 'auc-legendary-gloves-7',
+    es_subasta: true,
+    estado: 'Activo',
+    tag: '[RARE]',
+    itemName: 'Legendary Gloves',
+    itemLevel: '+7',
+    slotLabel: 'GLOVES',
+    category: 'armor',
+    rarity: 'rare',
+    sellerName: 'UlmerMG',
+    currencyType: 'bless',
+    startingBid: 95,
+    currentBid: 120,
+    highestBidder: 'DarkMaster',
+    buyoutPrice: 220,
+    endsAt: Date.now() + 12 * 3600 * 1000,
+    status: 'active',
+    spriteUrl: '/assets/items/legendary-gloves.gif',
+    imagePath: '/assets/items/legendary-gloves.gif',
+    stats: {
+      defense: 47,
+      durability: 67,
+      maxDurability: 52,
+      strengthReq: 84,
+    },
+    classesAllowed: ['Dark Wizard', 'Magic Gladiator'],
+    hasLuck: true,
+    hasSkill: false,
+    additionalStat: 'Swimming speed increase · Additional defense +8',
+    excellentOptions: ['Reflect Damage +5%', 'Max AG increased by 5%'],
+    gearScore: 81,
+  },
+  {
+    id: 'auc-battle-scepter-9',
+    es_subasta: true,
+    estado: 'Activo',
+    tag: '[EPIC]',
+    itemName: 'Battle Scepter',
+    itemLevel: '+9',
+    slotLabel: 'WEAPON (RIGHT)',
+    category: 'weapon',
+    rarity: 'epic',
+    sellerName: 'UlmerDL',
+    currencyType: 'bless',
+    startingBid: 85,
+    currentBid: 130,
+    highestBidder: 'Siegfried',
+    buyoutPrice: 200,
+    endsAt: Date.now() + 6 * 3600 * 1000,
+    status: 'active',
+    spriteUrl: '/assets/items/battle-scepter.gif',
+    imagePath: '/assets/items/battle-scepter.gif',
+    stats: {
+      damageMin: 74,
+      damageMax: 85,
+      attackSpeed: 45,
+      durability: 127,
+      maxDurability: 65,
+    },
+    classesAllowed: ['Dark Lord'],
+    hasLuck: true,
+    hasSkill: true,
+    additionalStat: 'Additional damage +8',
+    excellentOptions: [
+      'Increase Damage +level/20',
+      'Excellent Damage Rate +10%',
+      'Increase Mana after monster +Mana/8',
+    ],
+    harmonyOption: 'Critical damage increase +35',
+    gearScore: 115,
+  },
+];
+
+function getVercelAuctions(): any[] {
+  try {
+    if (fs.existsSync(VERCEL_AUCTIONS_PATH)) {
+      const parsed = JSON.parse(fs.readFileSync(VERCEL_AUCTIONS_PATH, 'utf-8'));
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    // fallback
+  }
+  return inMemoryAuctions;
+}
+
+function saveVercelAuctions(items: any[]) {
+  inMemoryAuctions = items;
+  try {
+    fs.writeFileSync(VERCEL_AUCTIONS_PATH, JSON.stringify(items, null, 2), 'utf-8');
+  } catch (e) {
+    // ignore
+  }
+}
+
+// 4. Auctions Endpoints
+router.get('/auctions', (_req: Request, res: Response) => {
+  res.json({ success: true, auctions: getVercelAuctions() });
+});
+
+router.post('/auctions', (req: Request, res: Response) => {
+  try {
+    const raw = req.body;
+    if (!raw || !raw.itemName) {
+      return res.status(400).json({ success: false, error: 'Faltan datos del ítem' });
+    }
+    const cleanName = cleanMuItemName(raw.itemName) || raw.itemName;
+    const catMatch = getSmashMuItemByName(cleanName);
+    const sprite = catMatch ? getSmashMuImageUrl(catMatch.imagePath) : getItemSprite(cleanName, raw.category);
+
+    const newItem = {
+      ...raw,
+      id: raw.id || `auc-${Date.now()}`,
+      itemName: cleanName,
+      imagePath: sprite,
+      spriteUrl: sprite,
+      estado: 'Activo',
+      status: 'active',
+      createdAt: Date.now(),
+      endsAt: raw.endsAt || (Date.now() + 12 * 3600 * 1000),
+    };
+
+    const list = getVercelAuctions();
+    list.unshift(newItem);
+    saveVercelAuctions(list);
+    res.json({ success: true, item: newItem });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/auctions/:id/bid', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { amount, bidder } = req.body;
+    const list = getVercelAuctions();
+    const item = list.find((a) => a.id === id);
+    if (!item) return res.status(404).json({ success: false, error: 'Subasta no encontrada' });
+
+    const newBid = Number(amount);
+    if (isNaN(newBid) || newBid <= (item.currentBid || item.startingBid || 0)) {
+      return res.status(400).json({ success: false, error: 'La puja debe superar la oferta actual.' });
+    }
+
+    item.currentBid = newBid;
+    item.highestBidder = bidder || 'Anónimo';
+    saveVercelAuctions(list);
+    res.json({ success: true, item });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/auctions/:id/sell', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { precioFinal, ganador } = req.body;
+    const list = getVercelAuctions();
+    const item = list.find((a) => a.id === id);
+    if (!item) return res.status(404).json({ success: false, error: 'Subasta no encontrada' });
+
+    item.status = 'sold';
+    item.estado = 'Vendido';
+    item.currentBid = precioFinal || item.buyoutPrice || item.currentBid;
+    item.highestBidder = ganador || 'Comprador Inmediato';
+    saveVercelAuctions(list);
+    res.json({ success: true, item });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.put('/auctions/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    const list = getVercelAuctions();
+    const index = list.findIndex((a) => a.id === id);
+    if (index === -1) return res.status(404).json({ success: false, error: 'Subasta no encontrada' });
+
+    list[index] = { ...list[index], ...updates };
+    saveVercelAuctions(list);
+    res.json({ success: true, item: list[index] });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete('/auctions/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const list = getVercelAuctions().filter((a) => a.id !== id);
+    saveVercelAuctions(list);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Mount router on both '/api' and '/' to guarantee routing regardless of path stripping

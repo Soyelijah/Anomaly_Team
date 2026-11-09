@@ -23,7 +23,6 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   isOfficer: boolean;
   officerName: string;
-  onOpenLogin: () => void;
   onLogoutOfficer: () => void;
   isSyncing: boolean;
   onSync: () => void;
@@ -55,7 +54,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveTab,
   isOfficer,
   officerName,
-  onOpenLogin,
   onLogoutOfficer,
   isSyncing,
   onSync,
@@ -329,8 +327,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span className="text-[9px] px-1 rounded bg-slate-800 text-slate-400">API</span>
         </button>
 
-        {/* Officer Status / Login Button */}
-        {isOfficer ? (
+        {/* Officer Status Badge (Only shown if member is an officer/GM) */}
+        {isOfficer && (
           <div className="bg-[#120e21] border border-purple-500/30 rounded-xl p-2.5 flex items-center justify-between text-xs shadow-sm">
             <div className="flex items-center space-x-2 truncate">
               <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -346,14 +344,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               Salir
             </button>
           </div>
-        ) : (
-          <button
-            onClick={onOpenLogin}
-            className="w-full py-2 px-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-xs font-semibold border border-slate-700/60 hover:border-purple-500/40 transition-all flex items-center justify-center space-x-2 shadow-sm cursor-pointer"
-          >
-            <Crown className="w-3.5 h-3.5 text-amber-400" />
-            <span>Acceso Oficial</span>
-          </button>
         )}
 
         {/* Smash MU Brand Mark */}

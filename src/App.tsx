@@ -21,7 +21,7 @@ import { AuctionView } from './components/AuctionView';
 import { MemberPortalView } from './components/MemberPortalView';
 import { VaultAccountsView } from './components/VaultAccountsView';
 import { CommunityModal } from './components/CommunityModal';
-import { LoginModal, EditMemberModal, AddMemberModal, AddVaultAccountModal } from './components/Modals';
+import { EditMemberModal, AddMemberModal, AddVaultAccountModal } from './components/Modals';
 import { EquipmentInspectorModal } from './components/EquipmentInspectorModal';
 import { WorldClockBar } from './components/WorldClockBar';
 import { MessageSquare, LogOut, UserCheck } from 'lucide-react';
@@ -119,7 +119,6 @@ export default function App() {
   ]);
 
   // Modals state
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
@@ -537,7 +536,6 @@ export default function App() {
           setActiveTab={setActiveTab}
           isOfficer={isOfficer}
           officerName={officerName}
-          onOpenLogin={() => setIsLoginOpen(true)}
           onLogoutOfficer={handleLogout}
           isSyncing={isSyncing}
           onSync={fetchSmashMuData}
@@ -565,10 +563,6 @@ export default function App() {
               }}
               isOfficer={isOfficer}
               officerName={officerName}
-              onOpenLogin={() => {
-                setIsLoginOpen(true);
-                setMobileSidebarOpen(false);
-              }}
               onLogoutOfficer={handleLogout}
               isSyncing={isSyncing}
               onSync={fetchSmashMuData}
@@ -734,14 +728,6 @@ export default function App() {
       </div>
 
       {/* Modals */}
-      <LoginModal
-        isOpen={isLoginOpen}
-        onClose={() => setIsLoginOpen(false)}
-        onLoginOfficer={handleLogin}
-        onLoginMember={handleLoginMember}
-        availableCharacters={characters.slice(0, 6)}
-      />
-
       <EditMemberModal
         isOpen={editingCharacter !== null}
         character={editingCharacter}

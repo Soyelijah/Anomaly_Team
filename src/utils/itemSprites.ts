@@ -124,10 +124,33 @@ export const cleanMuItemName = (rawName?: string): string => {
     .replace(/\bcloa?k\s+of\s+death\b/gi, 'Cloak of Death')
     .replace(/\bwin[gd]s?\s+of\b/gi, 'Wings of');
 
+  // Normalize common OCR typos on item types (Armr -> Armor, Glves -> Gloves, etc.)
+  clean = clean
+    .replace(/\b(?:Armr|Amor|Amour|Armo)\b/gi, 'Armor')
+    .replace(/\b(?:Glves|Gloes|Gloves)\b/gi, 'Gloves')
+    .replace(/\b(?:Bots|Boots|Botos)\b/gi, 'Boots')
+    .replace(/\b(?:Pnts|Pants|Panst)\b/gi, 'Pants')
+    .replace(/\b(?:Hlm|Helm|Hlem)\b/gi, 'Helm')
+    .replace(/\b(?:Scpter|Sceptr|Septre)\b/gi, 'Scepter')
+    .replace(/\b(?:Stff|Staf)\b/gi, 'Staff')
+    .replace(/\b(?:Swrd|Swword)\b/gi, 'Sword')
+    .replace(/\b(?:Blde|Blad)\b/gi, 'Blade')
+    .replace(/\b(?:Shld|Shild)\b/gi, 'Shield')
+    .replace(/\b(?:Crssbow|Croshbow)\b/gi, 'Crossbow');
+
+  // Normalize set names
+  clean = clean
+    .replace(/\b(?:Drgon|Dragn)\b/gi, 'Dragon')
+    .replace(/\b(?:Legndary|Legendry)\b/gi, 'Legendary')
+    .replace(/\b(?:Sphnx|Sphix)\b/gi, 'Sphinx')
+    .replace(/\b(?:Platna|Platin)\b/gi, 'Platina')
+    .replace(/\b(?:Bttla|Batle)\b/gi, 'Battle')
+    .replace(/\b(?:Gret|Graet)\b/gi, 'Great');
+
   return clean;
 };
 
-import { getSmashMuItemByName, getSmashMuImageUrl } from './muItemsDatabase';
+import { getSmashMuItemByName, getSmashMuImageUrl } from './muItemsDatabase.ts';
 
 export const getItemSprite = (itemName?: string, category?: string): string => {
   if (!itemName) {

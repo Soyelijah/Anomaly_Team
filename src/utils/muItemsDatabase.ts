@@ -3,7 +3,7 @@
  * Provides official item definitions, groups, indices, authentic sprite URLs, default rarities, and stats.
  */
 
-import COMPLETE_SMASHMU_ITEMS from '../data/smashMuCompleteCatalog.json';
+import COMPLETE_SMASHMU_ITEMS from '../data/smashMuCompleteCatalog.ts';
 
 export interface MuCatalogItem {
   name: string;
@@ -879,7 +879,7 @@ export const UNIFIED_SMASHMU_CATALOG: MuCatalogItem[] = (() => {
   }
 
   // 2. Add all items from Smash MU complete 933-item registry
-  for (const raw of (COMPLETE_SMASHMU_ITEMS as any[])) {
+  for (const raw of (COMPLETE_SMASHMU_ITEMS as readonly any[])) {
     const key = raw.name.toLowerCase().trim();
     if (!map.has(key)) {
       const isWings = raw.category === 'wings' || raw.name.toLowerCase().includes('wings') || raw.name.toLowerCase().includes('cape') || raw.name.toLowerCase().includes('cloak');

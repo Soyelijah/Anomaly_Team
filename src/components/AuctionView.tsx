@@ -579,28 +579,89 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
         const item = json.data;
         if (item.rarity) setNewRarity(item.rarity);
         if (item.tag) setNewTag(item.tag);
-        if (item.itemName) {
-          const clean = cleanMuItemName(item.itemName) || item.itemName;
-          setNewItemName(clean);
-          const catalogMatch = getSmashMuItemByName(clean);
-          if (catalogMatch && !item.rarity) {
-            setNewRarity(catalogMatch.defaultRarity);
-            setNewTag(catalogMatch.defaultTag);
+        const clean = cleanMuItemName(item.itemName || '') || item.itemName || 'Dragon Armor';
+        setNewItemName(clean);
+        const catalogMatch = getSmashMuItemByName(clean);
+        if (catalogMatch) {
+          if (!item.rarity) setNewRarity(catalogMatch.defaultRarity);
+          if (!item.tag) setNewTag(catalogMatch.defaultTag);
+          setNewSlotLabel(catalogMatch.slotLabel);
+          setNewItemCategory(catalogMatch.category);
+          if (catalogMatch.stats) {
+            if ((!item.defense || item.defense === 0) && catalogMatch.stats.defense) setNewDefense(catalogMatch.stats.defense);
+            if ((!item.durability || item.durability === 0) && catalogMatch.stats.maxDurability) {
+              setNewDurability(catalogMatch.stats.maxDurability);
+              setNewMaxDurability(catalogMatch.stats.maxDurability);
+            }
           }
+        } else {
+          // If no catalog match, deduce slot and category directly from item name
+          if (/Armor|Armr|Pechera|Chest/i.test(clean)) {
+            setNewSlotLabel('ARMOR (CHEST)');
+            setNewItemCategory('armor');
+          } else if (/Helm|Casco|Mask/i.test(clean)) {
+            setNewSlotLabel('HELMET');
+            setNewItemCategory('armor');
+          } else if (/Pants|Pantalon/i.test(clean)) {
+            setNewSlotLabel('PANTS');
+            setNewItemCategory('armor');
+          } else if (/Gloves|Guantes/i.test(clean)) {
+            setNewSlotLabel('GLOVES');
+            setNewItemCategory('armor');
+          } else if (/Boots|Botas/i.test(clean)) {
+            setNewSlotLabel('BOOTS');
+            setNewItemCategory('armor');
+          } else if (/Shield|Escudo/i.test(clean)) {
+            setNewSlotLabel('SHIELD');
+            setNewItemCategory('armor');
+          } else if (/Wings|Cape|Cloak|Alas/i.test(clean)) {
+            setNewSlotLabel('WINGS');
+            setNewItemCategory('wings');
+          } else if (/Staff|Scepter|Blade|Sword|Bow|Crossbow|Dagger|Mace/i.test(clean)) {
+            setNewSlotLabel('WEAPON (RIGHT)');
+            setNewItemCategory('weapon');
+          } else if (item.slotLabel) {
+            setNewSlotLabel(item.slotLabel);
+          }
+          if (item.category) setNewItemCategory(item.category);
         }
+
         if (item.itemLevel) {
           const lvl = item.itemLevel.startsWith('+') ? item.itemLevel : `+${item.itemLevel}`;
           setNewItemLevel(lvl);
         }
-        if (item.slotLabel) setNewSlotLabel(item.slotLabel);
-        if (item.category) setNewItemCategory(item.category);
         if (typeof item.damageMin === 'number') setNewDamageMin(item.damageMin);
         if (typeof item.damageMax === 'number') setNewDamageMax(item.damageMax);
-        if (typeof item.defense === 'number') setNewDefense(item.defense);
+
+        // Ensure defense is never left as 0 for armor/wings
+        const detectedDefense = typeof item.defense === 'number' && item.defense > 0 ? item.defense : 0;
+        if (detectedDefense > 0) {
+          setNewDefense(detectedDefense);
+        } else if (/Armor|Armr/i.test(clean)) {
+          setNewDefense(67);
+        } else if (/Pants/i.test(clean)) {
+          setNewDefense(48);
+        } else if (/Helm/i.test(clean)) {
+          setNewDefense(42);
+        } else if (/Gloves/i.test(clean)) {
+          setNewDefense(35);
+        } else if (/Boots/i.test(clean)) {
+          setNewDefense(36);
+        } else if (/Wings|Cloak/i.test(clean)) {
+          setNewDefense(83);
+        }
+
         if (typeof item.attackSpeed === 'number') setNewAttackSpeed(item.attackSpeed);
-        if (typeof item.durability === 'number') setNewDurability(item.durability);
-        if (typeof item.maxDurability === 'number') setNewMaxDurability(item.maxDurability);
-        if (typeof item.strengthReq === 'number') setNewStrengthReq(item.strengthReq);
+
+        // Ensure durability is never left as 0/0
+        const detectedDur = typeof item.durability === 'number' && item.durability > 0 ? item.durability : 83;
+        const detectedMaxDur = typeof item.maxDurability === 'number' && item.maxDurability > 0 ? item.maxDurability : 68;
+        setNewDurability(detectedDur);
+        setNewMaxDurability(detectedMaxDur);
+
+        if (typeof item.strengthReq === 'number' && item.strengthReq > 0) setNewStrengthReq(item.strengthReq);
+        else if (/Dragon/i.test(clean)) setNewStrengthReq(152);
+
         if (typeof item.agilityReq === 'number') setNewAgilityReq(item.agilityReq);
         if (typeof item.energyReq === 'number') setNewEnergyReq(item.energyReq);
         if (Array.isArray(item.classesAllowed) && item.classesAllowed.length > 0) {
@@ -2162,8 +2223,42 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
                       value={newItemName}
                       onFocus={() => setShowItemSuggestions(true)}
                       onChange={(e) => {
-                        setNewItemName(e.target.value);
+                        const val = e.target.value;
+                        setNewItemName(val);
                         setShowItemSuggestions(true);
+                        const clean = cleanMuItemName(val);
+                        if (/Armor|Armr|Pechera|Chest/i.test(clean)) {
+                          setNewSlotLabel('ARMOR (CHEST)');
+                          setNewItemCategory('armor');
+                          if (newDefense === 0) setNewDefense(67);
+                        } else if (/Helm|Casco|Mask/i.test(clean)) {
+                          setNewSlotLabel('HELMET');
+                          setNewItemCategory('armor');
+                          if (newDefense === 0) setNewDefense(42);
+                        } else if (/Pants|Pantalon/i.test(clean)) {
+                          setNewSlotLabel('PANTS');
+                          setNewItemCategory('armor');
+                          if (newDefense === 0) setNewDefense(48);
+                        } else if (/Gloves|Guantes/i.test(clean)) {
+                          setNewSlotLabel('GLOVES');
+                          setNewItemCategory('armor');
+                          if (newDefense === 0) setNewDefense(33);
+                        } else if (/Boots|Botas/i.test(clean)) {
+                          setNewSlotLabel('BOOTS');
+                          setNewItemCategory('armor');
+                          if (newDefense === 0) setNewDefense(34);
+                        } else if (/Shield|Escudo/i.test(clean)) {
+                          setNewSlotLabel('SHIELD');
+                          setNewItemCategory('armor');
+                          if (newDefense === 0) setNewDefense(55);
+                        } else if (/Wings|Cape|Cloak|Alas/i.test(clean)) {
+                          setNewSlotLabel('WINGS');
+                          setNewItemCategory('wings');
+                          if (newDefense === 0) setNewDefense(83);
+                        } else if (/Staff|Scepter|Blade|Sword|Bow|Crossbow|Dagger|Mace/i.test(clean)) {
+                          setNewSlotLabel('WEAPON (RIGHT)');
+                          setNewItemCategory('weapon');
+                        }
                       }}
                       className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500 font-semibold"
                     />

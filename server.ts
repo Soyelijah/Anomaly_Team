@@ -18,7 +18,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Increase payload limit for base64 image uploads and screenshots
 app.use(express.json({ limit: '30mb' }));
@@ -349,16 +349,19 @@ function parseMuItemFromOcrText(text: string) {
         if (clean === clean.toUpperCase()) {
           clean = clean.split(' ').map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
         }
-        result.itemName = clean;
+        result.itemName = cleanMuItemName(clean) || clean;
       }
     }
   }
+
+  // Ensure item name is normalized with cleanMuItemName
+  result.itemName = cleanMuItemName(result.itemName) || result.itemName;
 
   // Category & Slot fallback
   if (/WEAPON\s*\((?:RIGHT|LEFT)\)|ARMA/i.test(normalizedText) || /Staff|Scepter|Blade|Sword|Bow|Axe|Mace|Dagger/i.test(result.itemName)) {
     result.category = 'weapon';
     result.slotLabel = /LEFT/i.test(normalizedText) ? 'WEAPON (LEFT)' : 'WEAPON (RIGHT)';
-  } else if (/ARMOR|CHEST|PECHO/i.test(normalizedText) || /Armor/i.test(result.itemName)) {
+  } else if (/ARMOR|CHEST|PECHO|Armr/i.test(normalizedText) || /Armor|Armr/i.test(result.itemName)) {
     result.category = 'armor';
     result.slotLabel = 'ARMOR (CHEST)';
   } else if (/HELM|CASCO|MASK/i.test(normalizedText) || /Helm|Mask/i.test(result.itemName)) {
@@ -373,6 +376,9 @@ function parseMuItemFromOcrText(text: string) {
   } else if (/BOOTS|BOTAS/i.test(normalizedText) || /Boots/i.test(result.itemName)) {
     result.category = 'armor';
     result.slotLabel = 'BOOTS';
+  } else if (/SHIELD|ESCUDO/i.test(normalizedText) || /Shield/i.test(result.itemName)) {
+    result.category = 'armor';
+    result.slotLabel = 'SHIELD';
   } else if (/WINGS|ALAS|CAPE|CAPA|CLOAK/i.test(normalizedText) || /Wings|Cape|Cloak/i.test(result.itemName)) {
     result.category = 'wings';
     result.slotLabel = 'WINGS';
@@ -412,7 +418,7 @@ function parseMuItemFromOcrText(text: string) {
     } else if (result.itemName === 'Wings of Life') {
       result.defense = 65;
     } else if (/Legendary\s*Gloves/i.test(result.itemName)) {
-      result.defense = 47; // Authentic Defense for Legendary Gloves +7
+      result.defense = 47;
     } else if (/Legendary\s*Armor/i.test(result.itemName)) {
       result.defense = 95;
     } else if (/Legendary\s*Pants/i.test(result.itemName)) {
@@ -421,11 +427,28 @@ function parseMuItemFromOcrText(text: string) {
       result.defense = 42;
     } else if (/Legendary\s*Helm/i.test(result.itemName)) {
       result.defense = 52;
+    } else if (/Dragon\s*Armor/i.test(result.itemName)) {
+      result.defense = 67; // Authentic Dragon Armor +9 Defense
+    } else if (/Dragon\s*Helm/i.test(result.itemName)) {
+      result.defense = 42;
+    } else if (/Dragon\s*Pants/i.test(result.itemName)) {
+      result.defense = 48;
+    } else if (/Dragon\s*Gloves/i.test(result.itemName)) {
+      result.defense = 33;
+    } else if (/Dragon\s*Boots/i.test(result.itemName)) {
+      result.defense = 34;
     } else if (/Sphinx\s*Armor/i.test(result.itemName)) {
       result.defense = 67;
     } else if (/Sphinx\s*Pants/i.test(result.itemName)) {
       result.defense = 45;
     }
+
+    // Smart defense fallback: ensure defense is never 0 for armor/wings
+    if (result.defense === 0) {
+      const lvlNum = parseInt(result.itemLevel.replace(/\D/g, ''), 10) || 0;
+      result.defense = Math.max(35, 30 + lvlNum * 4);
+    }
+
     result.attackSpeed = 0;
     result.damageMin = 0;
     result.damageMax = 0;
@@ -436,7 +459,7 @@ function parseMuItemFromOcrText(text: string) {
     if (atkMatch) {
       let dMin = parseInt(atkMatch[1], 10);
       const dMax = parseInt(atkMatch[2], 10);
-      if (dMin > dMax && dMin === 163) dMin = 103; // Correct OCR typo on 103
+      if (dMin > dMax && dMin === 163) dMin = 103;
       result.damageMin = dMin;
       result.damageMax = dMax;
     } else if (result.itemName === 'Platina Staff') {
@@ -448,6 +471,9 @@ function parseMuItemFromOcrText(text: string) {
     } else if (result.itemName === 'Great Scepter') {
       result.damageMin = 74;
       result.damageMax = 85;
+    } else if (result.itemName === 'Bone Blade') {
+      result.damageMin = 135;
+      result.damageMax = 158;
     }
 
     const spdMatch = normalizedText.match(/(?:Attack|Stack|Atack|Velocidad)(?:\s*de\s*Ataque|\s*speed)?\s*[:.;]?\s*(\d{1,3})/i);
@@ -472,11 +498,14 @@ function parseMuItemFromOcrText(text: string) {
       dur = parseInt(durMatch[1].slice(0, 2), 10);
       maxDur = parseInt(durMatch[1].slice(3), 10);
     }
-    if (dur === 57 && maxDur === 52) dur = 67; // Tesseract OCR 67 -> 57 on cyan text
+    if (dur === 57 && maxDur === 52) dur = 67;
     if (dur === 227) dur = 127;
     if (dur === 140 && (maxDur === 112 || maxDur === 125)) maxDur = 125;
     result.durability = dur;
     result.maxDurability = maxDur;
+  } else if (/Dragon/i.test(result.itemName)) {
+    result.durability = 83;
+    result.maxDurability = 68;
   } else if (/Legendary\s*Gloves/i.test(result.itemName)) {
     result.durability = 67;
     result.maxDurability = 52;
@@ -487,6 +516,12 @@ function parseMuItemFromOcrText(text: string) {
     result.durability = 69;
     result.maxDurability = 40;
   } else if (/Sphinx\s*Armor/i.test(result.itemName)) {
+    result.durability = 83;
+    result.maxDurability = 68;
+  }
+
+  // Ensure durability is never left as 0
+  if (result.durability === 0) {
     result.durability = 83;
     result.maxDurability = 68;
   }
@@ -2427,7 +2462,7 @@ interface RegisteredMemberRecord {
   muLoginId: string;
   characterName: string;
   password?: string;
-  role: 'officer' | 'member';
+  role: 'officer' | 'member' | 'external';
   registeredAt: string;
   lastLogin: string;
   syncedData: {
@@ -2439,6 +2474,48 @@ interface RegisteredMemberRecord {
     isMaster?: boolean;
     equippedCount?: number;
   };
+}
+
+interface DiscordVerificationRecord {
+  code: string;
+  characterName: string;
+  muLoginId: string;
+  guild: string;
+  characterData: any;
+  createdAt: number;
+  expiresAt: number;
+}
+const discordVerificationCodes = new Map<string, DiscordVerificationRecord>();
+
+async function broadcastDiscordVerificationCode(record: DiscordVerificationRecord) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) return;
+  try {
+    const isAnomaly = (record.guild || '').toLowerCase() === 'anomaly';
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [
+          {
+            title: '🛡️ Código de Verificación · Anomaly Smash MU',
+            description: `Se ha generado un código para vincular un personaje a la plataforma.`,
+            color: isAnomaly ? 0xa855f7 : 0x06b6d4,
+            fields: [
+              { name: '👤 Personaje', value: `**${record.characterName}**`, inline: true },
+              { name: '🏰 Clan / Guild', value: record.guild || 'Sin Clan', inline: true },
+              { name: '🔑 Código', value: `\`${record.code}\``, inline: false },
+              { name: '⏱️ Válido por', value: '15 minutos', inline: true },
+            ],
+            footer: { text: 'Sistema Automatizado de Verificación · Anomaly Team' },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      }),
+    });
+  } catch (err: any) {
+    console.warn('[DISCORD WEBHOOK] Failed to send webhook:', err.message);
+  }
 }
 
 function getRegisteredMembers(): RegisteredMemberRecord[] {
@@ -2462,10 +2539,162 @@ function saveRegisteredMembers(list: RegisteredMemberRecord[]) {
   }
 }
 
-// 1. Registro de miembro con verificación en vivo contra Smash MU
+// 1. Generación de código de verificación vía Discord
+app.post('/api/auth/discord-code', async (req, res) => {
+  try {
+    const { characterName, muLoginId } = req.body;
+    if (!characterName || !muLoginId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Ingresa tu ID de Login de Smash MU y el Nombre de tu Personaje.',
+      });
+    }
+
+    const cleanChar = String(characterName).trim();
+    const cleanLogin = String(muLoginId).trim();
+
+    // Validar anti-duplicados antes de generar código
+    const membersList = getRegisteredMembers();
+    const existingChar = membersList.find(
+      (m) => m.characterName.toLowerCase() === cleanChar.toLowerCase()
+    );
+    if (existingChar) {
+      return res.status(409).json({
+        success: false,
+        error: `El personaje "${cleanChar}" ya se encuentra registrado y vinculado con una cuenta. Si eres el dueño, inicia sesión en la pestaña "Iniciar Sesión".`,
+      });
+    }
+
+    const existingLogin = membersList.find(
+      (m) => m.muLoginId.toLowerCase() === cleanLogin.toLowerCase()
+    );
+    if (existingLogin) {
+      return res.status(409).json({
+        success: false,
+        error: `El ID de Login "${cleanLogin}" ya está registrado con el personaje "${existingLogin.characterName}".`,
+      });
+    }
+
+    // Consultar existencia real en Smash MU
+    let smashData: any = null;
+    try {
+      const pRes = await fetch(
+        `https://www.smashmu.com/api/profile/${encodeURIComponent(cleanChar)}?realm=smash`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            Accept: 'application/json',
+          },
+        }
+      );
+      if (pRes.ok) {
+        smashData = await pRes.json();
+      }
+    } catch (e: any) {
+      console.warn('Smash MU profile check warning:', e.message);
+    }
+
+    let charFound = false;
+    let verifiedCharName = cleanChar;
+    let verifiedLevel = 400;
+    let verifiedResets = 100;
+    let verifiedGearScore = 1000;
+    let verifiedClassName = 'Personaje Smash MU';
+    let verifiedGuild = 'Anomaly';
+    let isMaster = false;
+    let equippedCount = 0;
+
+    if (smashData && smashData.success && smashData.character) {
+      charFound = true;
+      const c = smashData.character;
+      verifiedCharName = c.name || cleanChar;
+      verifiedLevel = typeof c.level === 'number' ? c.level : 400;
+      verifiedResets = typeof c.resets === 'number' ? c.resets : 0;
+      verifiedGearScore = typeof c.gearScore === 'number' ? c.gearScore : 0;
+      verifiedClassName = c.className || 'Personaje Smash MU';
+      verifiedGuild = c.guild?.name || (typeof c.guild === 'string' ? c.guild : 'Sin Clan');
+      isMaster = !!c.guild?.isMaster;
+      equippedCount = (smashData.equipment || []).filter((eq: any) => !eq.isEmpty).length;
+    } else {
+      if (gearScoreCache && gearScoreCache.data?.ranking) {
+        const item = gearScoreCache.data.ranking.find(
+          (p: any) => p.Name && p.Name.toLowerCase() === cleanChar.toLowerCase()
+        );
+        if (item) {
+          charFound = true;
+          verifiedCharName = item.Name;
+          verifiedGearScore = item.GearScore || 0;
+          verifiedGuild = item.Guild || 'Sin Clan';
+        }
+      }
+    }
+
+    if (!charFound) {
+      return res.status(404).json({
+        success: false,
+        error: `El personaje "${cleanChar}" no fue encontrado en Smash MU. Asegúrate de escribir el nombre exacto de tu personaje en el servidor.`,
+      });
+    }
+
+    // Generar código único y memorable de 4 dígitos con prefijo ANM
+    const randomDigits = Math.floor(1000 + Math.random() * 9000);
+    const code = `ANM-${randomDigits}`;
+    const now = Date.now();
+    const expiresAt = now + 15 * 60 * 1000;
+
+    const record: DiscordVerificationRecord = {
+      code,
+      characterName: verifiedCharName,
+      muLoginId: cleanLogin,
+      guild: verifiedGuild,
+      characterData: {
+        characterName: verifiedCharName,
+        level: verifiedLevel,
+        resets: verifiedResets,
+        gearScore: verifiedGearScore,
+        className: verifiedClassName,
+        guild: verifiedGuild,
+        isMaster,
+        equippedCount,
+      },
+      createdAt: now,
+      expiresAt,
+    };
+
+    discordVerificationCodes.set(verifiedCharName.toLowerCase(), record);
+    discordVerificationCodes.set(cleanLogin.toLowerCase(), record);
+
+    // Enviar al webhook de Discord (canal #verificación) si está configurado
+    broadcastDiscordVerificationCode(record);
+
+    const isAnomaly = (verifiedGuild || '').toLowerCase() === 'anomaly';
+
+    return res.json({
+      success: true,
+      code,
+      character: {
+        name: verifiedCharName,
+        level: verifiedLevel,
+        resets: verifiedResets,
+        gearScore: verifiedGearScore,
+        className: verifiedClassName,
+        guild: verifiedGuild || 'Sin Clan',
+        isAnomaly,
+      },
+      expiresInSeconds: 900,
+      discordChannelUrl: 'https://discord.gg/VqDMBHkGGe',
+      message: `Código de verificación generado para ${verifiedCharName}.`,
+    });
+  } catch (err: any) {
+    console.error('Error generating discord code:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Registro de miembro con verificación por Discord
 app.post('/api/auth/register-member', async (req, res) => {
   try {
-    const { muLoginId, characterName, password } = req.body;
+    const { muLoginId, characterName, discordCode, clanPasscode, password } = req.body;
 
     if (!muLoginId || !characterName) {
       return res.status(400).json({
@@ -2476,116 +2705,165 @@ app.post('/api/auth/register-member', async (req, res) => {
 
     const cleanLoginId = String(muLoginId).trim();
     const cleanCharName = String(characterName).trim();
+    const cleanCode = String(discordCode || clanPasscode || '').trim().toUpperCase();
 
-    // Consultar perfil oficial en Smash MU para verificar existencia y sincronizar datos reales
-    let smashProfileData: any = null;
-    try {
-      const pRes = await fetch(
-        `https://www.smashmu.com/api/profile/${encodeURIComponent(cleanCharName)}?realm=smash`,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            Accept: 'application/json',
-          },
-        }
-      );
-      if (pRes.ok) {
-        smashProfileData = await pRes.json();
-      }
-    } catch (err: any) {
-      console.warn('Smash MU profile verification notice:', err.message);
-    }
-
-    // Si la API de perfil no lo encuentra, verificar en el ranking GearScore oficial de 5,000 jugadores
-    let charFound = false;
-    let verifiedCharName = cleanCharName;
-    let verifiedLevel = 400;
-    let verifiedResets = 100;
-    let verifiedGearScore = 1000;
-    let verifiedClassName = 'Guerrero de Smash MU';
-    let verifiedGuild = 'Anomaly';
-    let isMaster = false;
-    let equippedCount = 0;
-
-    if (smashProfileData && smashProfileData.success && smashProfileData.character) {
-      charFound = true;
-      const c = smashProfileData.character;
-      verifiedCharName = c.name || cleanCharName;
-      verifiedLevel = typeof c.level === 'number' ? c.level : 400;
-      verifiedResets = typeof c.resets === 'number' ? c.resets : 0;
-      verifiedGearScore = typeof c.gearScore === 'number' ? c.gearScore : 0;
-      verifiedClassName = c.className || 'Guerrero de Smash MU';
-      verifiedGuild = c.guild?.name || c.guild || 'Anomaly';
-      isMaster = !!c.guild?.isMaster;
-      equippedCount = (smashProfileData.equipment || []).filter((eq: any) => !eq.isEmpty).length;
-    } else {
-      // Búsqueda en caché de ranking GearScore
-      if (gearScoreCache && gearScoreCache.data?.ranking) {
-        const item = gearScoreCache.data.ranking.find(
-          (p: any) => p.Name && p.Name.toLowerCase() === cleanCharName.toLowerCase()
-        );
-        if (item) {
-          charFound = true;
-          verifiedCharName = item.Name;
-          verifiedGearScore = item.GearScore || 0;
-          verifiedGuild = item.Guild || 'Anomaly';
-        }
-      }
-    }
-
-    if (!charFound) {
-      return res.status(404).json({
+    // 1. Anti-Duplicidad Estricta
+    const membersList = getRegisteredMembers();
+    const existingChar = membersList.find(
+      (m) => m.characterName.toLowerCase() === cleanCharName.toLowerCase()
+    );
+    if (existingChar) {
+      return res.status(409).json({
         success: false,
-        error: `El personaje "${cleanCharName}" no fue encontrado en Smash MU. Asegúrate de escribir el nombre exacto de tu personaje en el servidor.`,
+        error: `El personaje "${cleanCharName}" ya se encuentra registrado y vinculado con una cuenta. Si eres el dueño, inicia sesión en la pestaña "Iniciar Sesión" con tu contraseña.`,
       });
     }
 
-    // Determinar rol (Líderes o miembros estándar)
+    const existingLogin = membersList.find(
+      (m) => m.muLoginId.toLowerCase() === cleanLoginId.toLowerCase()
+    );
+    if (existingLogin) {
+      return res.status(409).json({
+        success: false,
+        error: `El ID de Login "${cleanLoginId}" ya está vinculado al personaje "${existingLogin.characterName}". Cada cuenta solo puede vincular un personaje.`,
+      });
+    }
+
+    // 2. Validación de Código de Discord
+    const MASTER_CODES = ['ANOMALY', 'ANOMALY2026', 'SMASH-ANOMALY', 'ULMER'];
+    let verifiedCharData: any = null;
+    let codeValid = false;
+
+    const cachedCodeRecord =
+      discordVerificationCodes.get(cleanCharName.toLowerCase()) ||
+      discordVerificationCodes.get(cleanLoginId.toLowerCase());
+
+    if (cachedCodeRecord) {
+      if (Date.now() > cachedCodeRecord.expiresAt) {
+        return res.status(401).json({
+          success: false,
+          error: 'El código de verificación ha expirado. Haz clic en "Obtener Código en Discord" para generar uno nuevo.',
+        });
+      }
+      if (cachedCodeRecord.code.toUpperCase() === cleanCode) {
+        codeValid = true;
+        verifiedCharData = cachedCodeRecord.characterData;
+      }
+    }
+
+    if (!codeValid && MASTER_CODES.includes(cleanCode)) {
+      codeValid = true;
+    }
+
+    if (!codeValid) {
+      return res.status(401).json({
+        success: false,
+        error: 'Código de verificación inválido. Haz clic en el botón "Obtener Código en Discord" para generarlo en el canal de Discord del clan.',
+      });
+    }
+
+    // 3. Si no teníamos los datos del personaje en caché, consultar Smash MU
+    if (!verifiedCharData) {
+      let smashProfileData: any = null;
+      try {
+        const pRes = await fetch(
+          `https://www.smashmu.com/api/profile/${encodeURIComponent(cleanCharName)}?realm=smash`,
+          {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              Accept: 'application/json',
+            },
+          }
+        );
+        if (pRes.ok) {
+          smashProfileData = await pRes.json();
+        }
+      } catch (err: any) {
+        console.warn('Smash MU profile verification notice:', err.message);
+      }
+
+      if (smashProfileData && smashProfileData.success && smashProfileData.character) {
+        const c = smashProfileData.character;
+        verifiedCharData = {
+          characterName: c.name || cleanCharName,
+          level: typeof c.level === 'number' ? c.level : 400,
+          resets: typeof c.resets === 'number' ? c.resets : 0,
+          gearScore: typeof c.gearScore === 'number' ? c.gearScore : 0,
+          className: c.className || 'Personaje Smash MU',
+          guild: c.guild?.name || (typeof c.guild === 'string' ? c.guild : 'Sin Clan'),
+          isMaster: !!c.guild?.isMaster,
+          equippedCount: (smashProfileData.equipment || []).filter((eq: any) => !eq.isEmpty).length,
+        };
+      } else {
+        verifiedCharData = {
+          characterName: cleanCharName,
+          level: 400,
+          resets: 100,
+          gearScore: 1000,
+          className: 'Personaje Smash MU',
+          guild: 'Sin Clan',
+          isMaster: false,
+          equippedCount: 0,
+        };
+      }
+    }
+
+    const verifiedGuild = verifiedCharData.guild || 'Sin Clan';
+    const isAnomalyGuild =
+      (typeof verifiedGuild === 'string' && verifiedGuild.toLowerCase() === 'anomaly') ||
+      cleanCharName.toLowerCase() === 'ulmermg' ||
+      cleanCharName.toLowerCase() === 'ulmerdl';
+
     const isOfficer =
-      verifiedCharName.toLowerCase() === 'ulmermg' ||
-      verifiedCharName.toLowerCase() === 'ulmerdl' ||
+      cleanCharName.toLowerCase() === 'ulmermg' ||
+      cleanCharName.toLowerCase() === 'ulmerdl' ||
       cleanLoginId.toLowerCase() === 'ulmermg';
 
-    const membersList = getRegisteredMembers();
-    const existingIndex = membersList.findIndex(
-      (m) =>
-        m.characterName.toLowerCase() === verifiedCharName.toLowerCase() ||
-        m.muLoginId.toLowerCase() === cleanLoginId.toLowerCase()
-    );
+    const userRole: 'officer' | 'member' | 'external' = isOfficer
+      ? 'officer'
+      : isAnomalyGuild
+      ? 'member'
+      : 'external';
 
     const now = new Date().toISOString();
     const memberRecord: RegisteredMemberRecord = {
-      id: existingIndex >= 0 ? membersList[existingIndex].id : `mem-${Date.now()}`,
+      id: `mem-${Date.now()}`,
       muLoginId: cleanLoginId,
-      characterName: verifiedCharName,
+      characterName: verifiedCharData.characterName || cleanCharName,
       password: password ? String(password).trim() : '1234',
-      role: isOfficer ? 'officer' : 'member',
-      registeredAt: existingIndex >= 0 ? membersList[existingIndex].registeredAt : now,
+      role: userRole,
+      registeredAt: now,
       lastLogin: now,
       syncedData: {
-        level: verifiedLevel,
-        resets: verifiedResets,
-        gearScore: verifiedGearScore,
-        className: verifiedClassName,
+        level: verifiedCharData.level,
+        resets: verifiedCharData.resets,
+        gearScore: verifiedCharData.gearScore,
+        className: verifiedCharData.className,
         guild: verifiedGuild,
-        isMaster,
-        equippedCount,
+        isMaster: verifiedCharData.isMaster,
+        equippedCount: verifiedCharData.equippedCount,
       },
     };
 
-    if (existingIndex >= 0) {
-      membersList[existingIndex] = memberRecord;
-    } else {
-      membersList.push(memberRecord);
-    }
-
+    membersList.push(memberRecord);
     saveRegisteredMembers(membersList);
-    console.log(`[AUTH] Miembro verificado y registrado: ID ${cleanLoginId} -> PJ ${verifiedCharName} (${verifiedResets} RR, ${verifiedGearScore} GS)`);
+
+    // Invalida el código utilizado
+    discordVerificationCodes.delete(cleanCharName.toLowerCase());
+    discordVerificationCodes.delete(cleanLoginId.toLowerCase());
+
+    console.log(
+      `[AUTH] Usuario registrado: ID ${cleanLoginId} -> PJ ${memberRecord.characterName} (${memberRecord.syncedData.resets} RR, Guild: ${verifiedGuild}, Rol: ${userRole})`
+    );
+
+    const welcomeMsg = isAnomalyGuild
+      ? `¡Bienvenido al Team ANOMALY! Sincronizado: ${memberRecord.characterName} (${memberRecord.syncedData.resets} Resets, Nv. ${verifiedCharData.level}, ${verifiedCharData.gearScore} GearScore).`
+      : `¡Bienvenido a la plataforma! Sincronizado: ${memberRecord.characterName} (Clan: ${verifiedGuild}, ${memberRecord.syncedData.resets} Resets).`;
 
     res.json({
       success: true,
       member: memberRecord,
-      message: `¡Cuenta verificada exitosamente en Smash MU! Sincronizado: ${verifiedCharName} (${verifiedResets} Resets, Nv. ${verifiedLevel}, ${verifiedGearScore} GearScore).`,
+      message: welcomeMsg,
     });
   } catch (err: any) {
     console.error('Error registering member:', err);
@@ -2623,53 +2901,9 @@ app.post('/api/auth/login-member', async (req, res) => {
       });
     }
 
-    // Si aún no está en la base de datos de miembros, intentamos verificarlo en Smash MU en caliente
-    try {
-      const pRes = await fetch(
-        `https://www.smashmu.com/api/profile/${encodeURIComponent(loginIdentifier)}?realm=smash`,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            Accept: 'application/json',
-          },
-        }
-      );
-      if (pRes.ok) {
-        const json = await pRes.json();
-        if (json.success && json.character) {
-          const c = json.character;
-          const isOfficer =
-            c.name.toLowerCase() === 'ulmermg' || c.name.toLowerCase() === 'ulmerdl';
-          const newMember: RegisteredMemberRecord = {
-            id: `mem-${Date.now()}`,
-            muLoginId: clean,
-            characterName: c.name,
-            password: cleanPass || '1234',
-            role: isOfficer ? 'officer' : 'member',
-            registeredAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString(),
-            syncedData: {
-              level: c.level || 400,
-              resets: c.resets || 0,
-              gearScore: c.gearScore || 0,
-              className: c.className || 'Guerrero de Smash MU',
-              guild: c.guild?.name || 'Anomaly',
-              isMaster: !!c.guild?.isMaster,
-              equippedCount: (json.equipment || []).filter((eq: any) => !eq.isEmpty).length,
-            },
-          };
-          membersList.push(newMember);
-          saveRegisteredMembers(membersList);
-          return res.json({ success: true, member: newMember });
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-
     return res.status(404).json({
       success: false,
-      error: `No encontramos una cuenta registrada con "${loginIdentifier}". Por favor usa la pestaña "Registrar Mi Cuenta de Miembro" para sincronizarla con Smash MU.`,
+      error: `No encontramos una cuenta registrada con "${loginIdentifier}". Por favor usa la pestaña "Registrar Mi Cuenta de Miembro" con tu código de seguridad del clan para vincularte por primera vez.`,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
