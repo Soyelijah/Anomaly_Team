@@ -541,35 +541,37 @@ export const EquipmentInspectorModal: React.FC<EquipmentInspectorModalProps> = (
 
     const loadProfile = async () => {
       try {
-        let res = await fetch(`/api/smash/profile/${encodeURIComponent(activeName)}`);
-        if (!res.ok) {
-          res = await fetch(
-            `https://www.smashmu.com/api/profile/${encodeURIComponent(activeName)}?realm=smash`
-          );
+        if (!activeName || !activeName.trim()) {
+          setLoading(false);
+          return;
         }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (isCancelled) return;
-
-        if (data.success && data.character) {
-          setProfile(data);
-          if (Array.isArray(data.equipment)) {
-            const activeItems = data.equipment.filter((e: SmashMUEquipmentItem) => !e.isEmpty);
-            preloadItemSprites(
-              activeItems.map((e: SmashMUEquipmentItem) => ({
-                itemName: e.name,
-                category: getSlotCategory(e.slotIndex),
-                imagePath: e.imagePath,
-              }))
+        const res = await fetch(`/api/smash/profile/${encodeURIComponent(activeName.trim())}`);
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (isCancelled) return;
+          if (data && data.success && data.character) {
+            setProfile(data);
+            if (Array.isArray(data.equipment)) {
+              const activeItems = data.equipment.filter((e: SmashMUEquipmentItem) => !e.isEmpty);
+              preloadItemSprites(
+                activeItems.map((e: SmashMUEquipmentItem) => ({
+                  itemName: e.name,
+                  category: getSlotCategory(e.slotIndex),
+                  imagePath: e.imagePath,
+                }))
+              );
+            }
+            // Auto select first non-empty slot
+            const firstItem = (data.equipment || []).find(
+              (e: SmashMUEquipmentItem) => !e.isEmpty
             );
+            if (firstItem) setSelectedSlot(firstItem.slotIndex);
+          } else {
+            setError(data.error || 'No se pudo obtener el perfil de este personaje.');
           }
-          // Auto select first non-empty slot
-          const firstItem = (data.equipment || []).find(
-            (e: SmashMUEquipmentItem) => !e.isEmpty
-          );
-          if (firstItem) setSelectedSlot(firstItem.slotIndex);
         } else {
-          setError(data.error || 'No se pudo obtener el perfil de este personaje.');
+          setError('No se pudo conectar con el servidor para obtener este personaje.');
         }
       } catch (err: any) {
         if (!isCancelled) {

@@ -471,9 +471,15 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
     setIsLoadingClanEquip(true);
     setClanEquipError(null);
 
-    fetch(`/api/smash/profile/${encodeURIComponent(selectedClanMember)}`)
+    if (!selectedClanMember || !selectedClanMember.trim()) {
+      setIsLoadingClanEquip(false);
+      return;
+    }
+
+    fetch(`/api/smash/profile/${encodeURIComponent(selectedClanMember.trim())}`)
       .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const ct = res.headers.get('content-type') || '';
+        if (!res.ok || !ct.includes('application/json')) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then((data) => {

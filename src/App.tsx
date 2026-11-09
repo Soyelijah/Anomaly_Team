@@ -2,14 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Character,
   ClanConfig,
-  SharedAccount,
   SquadRole,
   AttendanceStatus,
   SmashMUGuildLeagueSeason,
   SmashMUGearScoreItem,
   decodeMuClass,
 } from './types/clan';
-import { initialClanConfig, initialCharacters, initialSharedAccounts, serverEvents } from './data/initialData';
+import { initialClanConfig, initialCharacters, serverEvents } from './data/initialData';
 import { RefreshCw, Menu } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { PlayersRankingView } from './components/PlayersRankingView';
@@ -19,9 +18,8 @@ import { GuildLeaguesView } from './components/GuildLeaguesView';
 import { EventsRadar } from './components/EventsRadar';
 import { AuctionView } from './components/AuctionView';
 import { MemberPortalView } from './components/MemberPortalView';
-import { VaultAccountsView } from './components/VaultAccountsView';
 import { CommunityModal } from './components/CommunityModal';
-import { EditMemberModal, AddMemberModal, AddVaultAccountModal } from './components/Modals';
+import { EditMemberModal, AddMemberModal } from './components/Modals';
 import { EquipmentInspectorModal } from './components/EquipmentInspectorModal';
 import { WorldClockBar } from './components/WorldClockBar';
 import { MessageSquare, LogOut, UserCheck } from 'lucide-react';
@@ -72,20 +70,6 @@ export default function App() {
     return localStorage.getItem('anomaly_current_member') || 'MATONSITO';
   });
 
-  const [sharedAccounts, setSharedAccounts] = useState<SharedAccount[]>(() => {
-    const saved = localStorage.getItem('anomaly_clan_vault');
-    if (saved) {
-      try {
-        const parsed: SharedAccount[] = JSON.parse(saved);
-        return parsed.filter(
-          (a) => !/Aura_Anomaly|Warp_Anomaly|Vault_Anomaly|Farm_Anomaly|Anomaly_Warrior/i.test(a.characterName)
-        );
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
 
   // Private Team Session (Member registration & verification with Smash MU)
   const [teamSession, setTeamSession] = useState<TeamMemberSession | null>(() => {
@@ -121,7 +105,6 @@ export default function App() {
   // Modals state
   const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
   const [inspectedCharacter, setInspectedCharacter] = useState<string | null>(null);
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
 
@@ -130,9 +113,6 @@ export default function App() {
     localStorage.setItem('anomaly_clan_characters', JSON.stringify(characters));
   }, [characters]);
 
-  useEffect(() => {
-    localStorage.setItem('anomaly_clan_vault', JSON.stringify(sharedAccounts));
-  }, [sharedAccounts]);
 
   const addLog = useCallback((msg: string) => {
     const time = new Date().toLocaleTimeString();
@@ -151,10 +131,12 @@ export default function App() {
     try {
       addLog(`Consultando /api/smash/guild-leagues...`);
       let res = await fetch('/api/smash/guild-leagues');
-      if (!res.ok) {
+      let ct = res.headers.get('content-type') || '';
+      if (!res.ok || !ct.includes('application/json')) {
         res = await fetch('https://www.smashmu.com/api/guild-leagues');
+        ct = res.headers.get('content-type') || '';
       }
-      if (res.ok) {
+      if (res.ok && ct.includes('application/json')) {
         leaguesData = await res.json();
       }
     } catch (err: any) {
@@ -165,10 +147,12 @@ export default function App() {
     try {
       addLog(`Consultando /api/smash/gearscore (5,000 mejores)...`);
       let res = await fetch('/api/smash/gearscore');
-      if (!res.ok) {
+      let ct = res.headers.get('content-type') || '';
+      if (!res.ok || !ct.includes('application/json')) {
         res = await fetch('https://www.smashmu.com/api/ranking/gearscore?realm=smash&page=1&pageSize=5000');
+        ct = res.headers.get('content-type') || '';
       }
-      if (res.ok) {
+      if (res.ok && ct.includes('application/json')) {
         gsData = await res.json();
       }
     } catch (err: any) {
@@ -481,29 +465,6 @@ export default function App() {
     addLog(`Escuadrones de Castle Siege reorganizados automáticamente por clase.`);
   };
 
-  // Shared Accounts Handlers
-  const handleToggleAccountStatus = (id: string) => {
-    setSharedAccounts((prev) =>
-      prev.map((acc) => {
-        if (acc.id === id) {
-          const nextStatus = acc.status === 'available' ? 'in_use' : 'available';
-          const nextHolder = nextStatus === 'in_use' ? officerName : 'Libre';
-          return { ...acc, status: nextStatus, holder: nextHolder };
-        }
-        return acc;
-      })
-    );
-  };
-
-  const handleAddAccount = (acc: SharedAccount) => {
-    setSharedAccounts((prev) => [acc, ...prev]);
-    addLog(`Nueva cuenta compartida registrada: ${acc.title}`);
-  };
-
-  const handleDeleteAccount = (id: string) => {
-    setSharedAccounts((prev) => prev.filter((a) => a.id !== id));
-    addLog(`Cuenta de bóveda removida.`);
-  };
 
   const handleApplyRecruit = (app: {
     characterName: string;
@@ -694,18 +655,6 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'vault' && (
-            <VaultAccountsView
-              sharedAccounts={sharedAccounts}
-              currentMemberName={currentMember || officerName || 'UlmerMG'}
-              isOfficer={isOfficer}
-              isAnomalyMember={Boolean(isOfficer || teamSession?.role === 'officer' || teamSession?.role === 'member' || teamSession?.syncedData?.guild?.toLowerCase() === clanConfig.name.toLowerCase())}
-              onToggleStatus={handleToggleAccountStatus}
-              onDeleteAccount={handleDeleteAccount}
-              onOpenAddModal={() => setIsAddAccountOpen(true)}
-              onNavigateToTab={setActiveTab}
-            />
-          )}
 
           {activeTab === 'leagues' && (
             <GuildLeaguesView
@@ -759,11 +708,6 @@ export default function App() {
         onAdd={handleAddCharacter}
       />
 
-      <AddVaultAccountModal
-        isOpen={isAddAccountOpen}
-        onClose={() => setIsAddAccountOpen(false)}
-        onAdd={handleAddAccount}
-      />
 
       <EquipmentInspectorModal
         characterName={inspectedCharacter}

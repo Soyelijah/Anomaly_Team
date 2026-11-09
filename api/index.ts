@@ -143,6 +143,10 @@ router.get('/smash/gearscore', async (_req, res) => {
 });
 
 // Proxy 3: Single Character Profile from Smash MU
+router.get('/smash/profile', (_req, res) => {
+  res.status(400).json({ success: false, error: 'Nombre de personaje requerido.' });
+});
+
 router.get('/smash/profile/:name', async (req, res) => {
   try {
     const { name } = req.params;
@@ -1101,6 +1105,10 @@ router.get('/clan/supply-requests', (req: Request, res: Response) => {
   }
 });
 
+const DISCORD_SUPPLIES_WEBHOOK_URL =
+  process.env.DISCORD_SUPPLIES_WEBHOOK_URL ||
+  'https://discord.com/api/webhooks/1569199056213901482/MHZdJrapUkOZggj1u30_Nr0cJXJKxXqlPf2QEvC9nygleobnEZfQ_dpIrXRAvm2bx4TS';
+
 router.post('/clan/supply-requests', (req: Request, res: Response) => {
   try {
     const { characterName, supplyType, quantity, urgency, notes } = req.body;
@@ -1127,7 +1135,163 @@ router.post('/clan/supply-requests', (req: Request, res: Response) => {
 
     list.unshift(newRequest);
     saveVercelSupplyRequests(list);
+
+    // Notificar al canal de Discord dedicado #suministros-team
+    if (DISCORD_SUPPLIES_WEBHOOK_URL) {
+      const urgencyColor =
+        newRequest.urgency === 'alta' ? 0xef4444 : newRequest.urgency === 'media' ? 0xf59e0b : 0x3b82f6;
+
+      fetch(DISCORD_SUPPLIES_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: '📦 Solicitud de Suministros Publicada · Canal Suministros Team',
+              description: `El miembro **${newRequest.characterName}** ha publicado una solicitud de suministros para el clan.\n\n👉 **¿Tienes estos ítems?** Entra a la plataforma web en *Mi Portal* y presiona **"¡Yo Tengo!"** indicando tus observaciones para coordinar la entrega.`,
+              color: urgencyColor,
+              fields: [
+                { name: '👤 Solicitante', value: `**${newRequest.characterName}**`, inline: true },
+                { name: '⚔️ Suministro', value: `**${newRequest.supplyType}**`, inline: true },
+                { name: '🔢 Cantidad', value: newRequest.quantity, inline: true },
+                { name: '🚨 Urgencia', value: newRequest.urgency.toUpperCase(), inline: true },
+                { name: '📝 Motivo / Observaciones', value: newRequest.notes || 'Sin notas adicionales.', inline: false },
+                { name: '📍 Estado', value: '⏳ **PENDIENTE (Esperando miembro con disponibilidad)**', inline: false },
+              ],
+              footer: { text: 'Canal de Suministros Team · Clan Anomaly Smash MU' },
+              timestamp: now,
+            },
+          ],
+        }),
+      }).catch((e) => console.warn('Supplies webhook broadcast notice:', e.message));
+    }
+
     res.json({ success: true, request: newRequest });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Acción "¡Yo Tengo!" / Aceptar entregar el suministro solicitado
+router.post('/clan/supply-requests/:id/claim', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { providerName, providerNotes } = req.body;
+
+    if (!providerName || !providerName.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Debes indicar el nombre de tu personaje para comprometerte a entregar el suministro.',
+      });
+    }
+
+    const list = getVercelSupplyRequests();
+    const item = list.find((r) => r.id === id);
+
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Solicitud no encontrada.' });
+    }
+
+    const now = new Date().toISOString();
+    item.status = 'comprometido';
+    item.providerName = String(providerName).trim();
+    item.providerNotes = providerNotes ? String(providerNotes).trim() : 'Listo para entregar en juego.';
+    item.claimedAt = now;
+    item.updatedAt = now;
+
+    saveVercelSupplyRequests(list);
+
+    // Notificar al canal de Discord #suministros-team
+    if (DISCORD_SUPPLIES_WEBHOOK_URL) {
+      fetch(DISCORD_SUPPLIES_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: '🤝 ¡Suministro Comprometido! · Alguien tiene disponible',
+              description: `El guerrero **${item.providerName}** ha respondido **"¡Yo Tengo!"** y se compromete a entregar los suministros a **${item.characterName}**.`,
+              color: 0x10b981,
+              fields: [
+                { name: '👤 Proveedor / Donante', value: `**${item.providerName}**`, inline: true },
+                { name: '🎯 Para el Miembro', value: `**${item.characterName}**`, inline: true },
+                { name: '⚔️ Suministro', value: `${item.supplyType} (${item.quantity})`, inline: true },
+                {
+                  name: '💬 Observaciones de Entrega',
+                  value: item.providerNotes || 'Coordinar encuentro en el servidor.',
+                  inline: false,
+                },
+                { name: '📍 Estado', value: '🤝 **COMPROMETIDO (Pendiente de intercambio en juego)**', inline: false },
+              ],
+              footer: { text: 'Canal de Suministros Team · Clan Anomaly Smash MU' },
+              timestamp: now,
+            },
+          ],
+        }),
+      }).catch((e) => console.warn('Webhook claim notify error:', e.message));
+    }
+
+    res.json({ success: true, request: item });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Marcar suministro como "Entregado en Juego"
+router.post('/clan/supply-requests/:id/deliver', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { deliveryNotes, deliveredBy } = req.body;
+
+    const list = getVercelSupplyRequests();
+    const item = list.find((r) => r.id === id);
+
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Solicitud no encontrada.' });
+    }
+
+    const now = new Date().toISOString();
+    item.status = 'entregado';
+    item.deliveredAt = now;
+    item.updatedAt = now;
+    if (deliveryNotes) item.adminNotes = deliveryNotes;
+
+    saveVercelSupplyRequests(list);
+
+    // Notificar al canal #suministros-team
+    if (DISCORD_SUPPLIES_WEBHOOK_URL) {
+      fetch(DISCORD_SUPPLIES_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: '✅ Suministro Entregado con Éxito en Smash MU',
+              description: `Los suministros solicitados por **${item.characterName}** han sido entregados con éxito en el servidor.`,
+              color: 0x06b6d4,
+              fields: [
+                { name: '👤 Receptor', value: `**${item.characterName}**`, inline: true },
+                {
+                  name: '🛡️ Entregado por',
+                  value: `**${item.providerName || deliveredBy || 'Intendencia del Clan'}**`,
+                  inline: true,
+                },
+                { name: '📦 Suministro', value: `${item.supplyType} (${item.quantity})`, inline: true },
+                {
+                  name: '📝 Nota Final',
+                  value: deliveryNotes || item.providerNotes || 'Entrega concretada.',
+                  inline: false,
+                },
+              ],
+              footer: { text: 'Canal de Suministros Team · Clan Anomaly Smash MU' },
+              timestamp: now,
+            },
+          ],
+        }),
+      }).catch((e) => console.warn('Webhook deliver notify error:', e.message));
+    }
+
+    res.json({ success: true, request: item });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1136,7 +1300,7 @@ router.post('/clan/supply-requests', (req: Request, res: Response) => {
 router.put('/clan/supply-requests/:id', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { status, adminNotes, reviewerName } = req.body;
+    const { status, adminNotes, reviewerName, providerName, providerNotes } = req.body;
     const list = getVercelSupplyRequests();
     const item = list.find((r) => r.id === id);
 
@@ -1147,6 +1311,8 @@ router.put('/clan/supply-requests/:id', (req: Request, res: Response) => {
     if (status) item.status = status;
     if (adminNotes !== undefined) item.adminNotes = adminNotes;
     if (reviewerName) item.reviewedBy = reviewerName;
+    if (providerName) item.providerName = providerName;
+    if (providerNotes) item.providerNotes = providerNotes;
     item.updatedAt = new Date().toISOString();
 
     saveVercelSupplyRequests(list);
@@ -1231,7 +1397,90 @@ router.post('/clan/invasion-attendance/check', (req: Request, res: Response) => 
     }
 
     saveVercelInvasionAttendance(list);
+
+    // Webhook dedicado al Canal de Asistencias de Discord (NO en verificación)
+    const ATTENDANCE_WEBHOOK_URL =
+      process.env.DISCORD_ATTENDANCE_WEBHOOK_URL ||
+      'https://discord.com/api/webhooks/1569192451216904242/3mAdQcgHwaQ6m-FR_ItvHH6_qZMPakicWcSV9WOwa2UJ6gMMDTprQV6y7iQVVk3W_0fP';
+
+    if (ATTENDANCE_WEBHOOK_URL) {
+      fetch(ATTENDANCE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title:
+                checkType === 'check_in'
+                  ? '⚔️ Asistencia Invasión: ENTRADA Registrada'
+                  : '✅ Asistencia Invasión: SALIDA Completada',
+              description: `El guerrero **${cleanChar}** ha marcado su ${
+                checkType === 'check_in' ? 'entrada' : 'salida'
+              } en la invasión de las **${slot} hrs (Hora Chile)**.`,
+              color: checkType === 'check_in' ? 0x06b6d4 : 0x10b981,
+              fields: [
+                { name: '👤 Personaje', value: cleanChar, inline: true },
+                { name: '⏰ Turno Invasión', value: `${slot} CLT`, inline: true },
+                {
+                  name: '🌍 Hora Local Registrada',
+                  value: `${localTimeStr || 'N/A'} (${userTimeZone || 'Local'})`,
+                  inline: false,
+                },
+              ],
+              footer: { text: 'Canal Oficial de Asistencias · Clan Anomaly Smash MU' },
+              timestamp: nowIso,
+            },
+          ],
+        }),
+      }).catch((e) => console.warn('Invasion webhook broadcast notice:', e.message));
+    }
+
     res.json({ success: true, record });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/clan/siege-attendance', (req: Request, res: Response) => {
+  try {
+    const { characterName, status } = req.body;
+    if (!characterName || !status) {
+      return res.status(400).json({ success: false, error: 'Faltan parámetros: characterName, status.' });
+    }
+
+    const cleanChar = String(characterName).trim();
+    const statusText =
+      status === 'confirmed' ? 'DISPONIBLE PARA EL ASEDIO' : status === 'absent' ? 'NO DISPONIBLE' : 'EN DUDA';
+    const statusColor = status === 'confirmed' ? 0x10b981 : status === 'absent' ? 0xef4444 : 0xf59e0b;
+    const nowIso = new Date().toISOString();
+
+    const ATTENDANCE_WEBHOOK_URL =
+      process.env.DISCORD_ATTENDANCE_WEBHOOK_URL ||
+      'https://discord.com/api/webhooks/1569192451216904242/3mAdQcgHwaQ6m-FR_ItvHH6_qZMPakicWcSV9WOwa2UJ6gMMDTprQV6y7iQVVk3W_0fP';
+
+    if (ATTENDANCE_WEBHOOK_URL) {
+      fetch(ATTENDANCE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: '🏰 Disponibilidad Castle Siege Actualizada',
+              description: `El guerrero **${cleanChar}** ha actualizado su disponibilidad para el próximo asedio.`,
+              color: statusColor,
+              fields: [
+                { name: '👤 Personaje', value: cleanChar, inline: true },
+                { name: '⚔️ Estado', value: `**${statusText}**`, inline: true },
+              ],
+              footer: { text: 'Canal Oficial de Asistencias · Clan Anomaly Smash MU' },
+              timestamp: nowIso,
+            },
+          ],
+        }),
+      }).catch((e) => console.warn('Siege webhook notice:', e.message));
+    }
+
+    res.json({ success: true, characterName: cleanChar, status });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

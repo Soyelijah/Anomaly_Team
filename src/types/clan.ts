@@ -38,6 +38,12 @@ export interface ServerEvent {
   description: string;
   keyDrops: string[];
   recommendedLevel: string;
+  entries?: string;
+  category?: 'event' | 'boss' | 'invasion' | 'pvp' | 'world_boss';
+  badge?: string;
+  previewImage?: string;
+  fixedSpawnHoursChile?: string[];
+  bossCycleDays?: number;
 }
 
 export interface SharedAccount {

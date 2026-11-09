@@ -1,0 +1,18 @@
+[
+  {
+    "id": "req-1794196388415-164",
+    "characterName": "prinmestis",
+    "supplyType": "Joyas de la Bendición (Jewel of Bless)",
+    "quantity": "30 Pociones SD",
+    "urgency": "normal",
+    "notes": "",
+    "status": "entregado",
+    "createdAt": "2026-11-09T03:53:08.415Z",
+    "updatedAt": "2026-11-09T04:06:08.342Z",
+    "providerName": "UlmerDL",
+    "providerNotes": "Tengo las 30 SD en baul 1 Lorencia, te las paso a las 18:50",
+    "claimedAt": "2026-11-09T04:06:01.325Z",
+    "deliveredAt": "2026-11-09T04:06:08.342Z",
+    "adminNotes": "Trade concretado en Lorencia Bar con exito"
+  }
+]

@@ -38,7 +38,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'leagues', label: 'Ligas & GearScore' },
     { id: 'events', label: 'Radar de Eventos' },
     { id: 'siege', label: 'Castle Siege', tag: 'Deshabilitado' },
-    { id: 'vault', label: 'Cuentas & Vault' },
     { id: 'calculator', label: 'Calculadora' },
   ];
 

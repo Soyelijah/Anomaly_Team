@@ -71,15 +71,15 @@ export const PlayersRankingView: React.FC<PlayersRankingViewProps> = ({
 
     const loadChar = async () => {
       try {
-        let res = await fetch(`/api/smash/profile/${encodeURIComponent(selectedCharName)}`);
-        if (!res.ok) {
-          res = await fetch(
-            `https://www.smashmu.com/api/profile/${encodeURIComponent(selectedCharName)}?realm=smash`
-          );
+        if (!selectedCharName || !selectedCharName.trim()) {
+          setIsLoadingProfile(false);
+          return;
         }
-        if (res.ok) {
+        const res = await fetch(`/api/smash/profile/${encodeURIComponent(selectedCharName.trim())}`);
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
           const data = await res.json();
-          if (!isCancelled && data.success && data.character) {
+          if (!isCancelled && data && data.success && data.character) {
             setSelectedProfile(data);
           }
         }

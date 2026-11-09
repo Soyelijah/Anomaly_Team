@@ -1086,6 +1086,10 @@ function calculateRealisticSmashStats(
 }
 
 // Proxy Route 3: Character Profile & Full Real Equipment
+app.get('/api/smash/profile', (_req, res) => {
+  res.status(400).json({ success: false, error: 'Nombre de personaje requerido.' });
+});
+
 app.get('/api/smash/profile/:name', async (req, res) => {
   try {
     const { name } = req.params;
@@ -2923,9 +2927,13 @@ app.get('/api/auth/registered-members', (_req, res) => {
 });
 
 // ============================================================================
-// SISTEMA DE SUMINISTROS DEL CLAN (BANDEJA DE GESTIÓN PARA EL GUILD MASTER)
+// ============================================================================
+// SISTEMA DE SUMINISTROS DEL CLAN (#suministros-team)
 // ============================================================================
 const SUPPLY_REQUESTS_FILE = path.resolve(__dirname, 'data', 'supply_requests.json');
+const DISCORD_SUPPLIES_WEBHOOK_URL =
+  process.env.DISCORD_SUPPLIES_WEBHOOK_URL ||
+  'https://discord.com/api/webhooks/1569199056213901482/MHZdJrapUkOZggj1u30_Nr0cJXJKxXqlPf2QEvC9nygleobnEZfQ_dpIrXRAvm2bx4TS';
 
 interface ClanSupplyRequest {
   id: string;
@@ -2934,11 +2942,15 @@ interface ClanSupplyRequest {
   quantity: string;
   urgency: 'normal' | 'media' | 'alta';
   notes: string;
-  status: 'pendiente' | 'aprobado' | 'entregado' | 'rechazado';
+  status: 'pendiente' | 'comprometido' | 'aprobado' | 'entregado' | 'rechazado';
   createdAt: string;
   updatedAt: string;
   adminNotes?: string;
   reviewedBy?: string;
+  providerName?: string;
+  providerNotes?: string;
+  claimedAt?: string;
+  deliveredAt?: string;
 }
 
 function getSupplyRequests(): ClanSupplyRequest[] {
@@ -2979,7 +2991,7 @@ app.get('/api/clan/supply-requests', (req, res) => {
   }
 });
 
-// Crear nueva solicitud de suministros (Miembro)
+// Crear nueva solicitud de suministros (Miembro) -> Notifica a #suministros-team
 app.post('/api/clan/supply-requests', (req, res) => {
   try {
     const { characterName, supplyType, quantity, urgency, notes } = req.body;
@@ -3007,26 +3019,26 @@ app.post('/api/clan/supply-requests', (req, res) => {
     list.unshift(newRequest);
     saveSupplyRequests(list);
 
-    // Notificar al Webhook de Discord si existe
-    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-    if (webhookUrl) {
-      fetch(webhookUrl, {
+    // Notificar al Webhook de Discord de #suministros-team
+    if (DISCORD_SUPPLIES_WEBHOOK_URL) {
+      fetch(DISCORD_SUPPLIES_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           embeds: [
             {
               title: '📦 Nueva Solicitud de Suministros · Clan ANOMALY',
-              description: `El integrante **${newRequest.characterName}** ha solicitado suministros al Guild Master (UlmerMG).`,
-              color: newRequest.urgency === 'alta' ? 0xef4444 : 0xf59e0b,
+              description: `El integrante **${newRequest.characterName}** ha solicitado suministros al team.\nCualquier miembro u oficial que los tenga disponibles puede responder **"¡Yo Tengo!"** en la plataforma para coordinar la entrega.`,
+              color: newRequest.urgency === 'alta' ? 0xef4444 : newRequest.urgency === 'media' ? 0xf59e0b : 0x3b82f6,
               fields: [
-                { name: '👤 Guerrero', value: newRequest.characterName, inline: true },
-                { name: '⚔️ Suministro', value: newRequest.supplyType, inline: true },
-                { name: '📊 Cantidad', value: newRequest.quantity, inline: true },
-                { name: '⚠️ Urgencia', value: newRequest.urgency.toUpperCase(), inline: true },
-                { name: '📝 Motivo / Notas', value: newRequest.notes || 'Sin notas adicionales', inline: false },
+                { name: '👤 Solicitante', value: `**${newRequest.characterName}**`, inline: true },
+                { name: '⚔️ Suministro', value: `**${newRequest.supplyType}**`, inline: true },
+                { name: '📊 Cantidad', value: `**${newRequest.quantity}**`, inline: true },
+                { name: '⚠️ Nivel de Urgencia', value: `\`${newRequest.urgency.toUpperCase()}\``, inline: true },
+                { name: '📝 Observaciones / Motivo', value: newRequest.notes || 'Sin observaciones adicionales.', inline: false },
+                { name: '📢 Estado', value: '⏳ **PENDIENTE DE RESPUESTA** (Entra al portal para dar click en "¡Yo Tengo!")', inline: false },
               ],
-              footer: { text: 'Bandeja de Intendencia · Clan Anomaly Smash MU' },
+              footer: { text: 'Canal de Suministros Team · Clan Anomaly Smash MU' },
               timestamp: now,
             },
           ],
@@ -3040,11 +3052,121 @@ app.post('/api/clan/supply-requests', (req, res) => {
   }
 });
 
+// Acción "¡Yo Tengo!" / Aceptar entregar el suministro solicitado
+app.post('/api/clan/supply-requests/:id/claim', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { providerName, providerNotes } = req.body;
+
+    if (!providerName || !providerName.trim()) {
+      return res.status(400).json({ success: false, error: 'Debes indicar el nombre de tu personaje para comprometerte a entregar el suministro.' });
+    }
+
+    const list = getSupplyRequests();
+    const item = list.find((r) => r.id === id);
+
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Solicitud no encontrada.' });
+    }
+
+    const now = new Date().toISOString();
+    item.status = 'comprometido';
+    item.providerName = String(providerName).trim();
+    item.providerNotes = providerNotes ? String(providerNotes).trim() : 'Listo para entregar en juego.';
+    item.claimedAt = now;
+    item.updatedAt = now;
+
+    saveSupplyRequests(list);
+
+    // Notificar al canal de Discord #suministros-team
+    if (DISCORD_SUPPLIES_WEBHOOK_URL) {
+      fetch(DISCORD_SUPPLIES_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: '🤝 ¡Suministro Comprometido! · Alguien tiene disponible',
+              description: `El guerrero **${item.providerName}** ha respondido **"¡Yo Tengo!"** y se compromete a entregar los suministros a **${item.characterName}**.`,
+              color: 0x10b981,
+              fields: [
+                { name: '👤 Proveedor / Donante', value: `**${item.providerName}**`, inline: true },
+                { name: '🎯 Para el Miembro', value: `**${item.characterName}**`, inline: true },
+                { name: '⚔️ Suministro', value: `${item.supplyType} (${item.quantity})`, inline: true },
+                { name: '💬 Observaciones de Entrega', value: item.providerNotes || 'Coordinar encuentro en el servidor.', inline: false },
+                { name: '📍 Estado', value: '🤝 **COMPROMETIDO (Pendiente de intercambio en juego)**', inline: false },
+              ],
+              footer: { text: 'Canal de Suministros Team · Clan Anomaly Smash MU' },
+              timestamp: now,
+            },
+          ],
+        }),
+      }).catch((e) => console.warn('Webhook claim notify error:', e.message));
+    }
+
+    res.json({ success: true, request: item });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Marcar suministro como "Entregado en Juego"
+app.post('/api/clan/supply-requests/:id/deliver', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { deliveryNotes, deliveredBy } = req.body;
+
+    const list = getSupplyRequests();
+    const item = list.find((r) => r.id === id);
+
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Solicitud no encontrada.' });
+    }
+
+    const now = new Date().toISOString();
+    item.status = 'entregado';
+    item.deliveredAt = now;
+    item.updatedAt = now;
+    if (deliveryNotes) item.adminNotes = deliveryNotes;
+
+    saveSupplyRequests(list);
+
+    // Notificar al canal #suministros-team
+    if (DISCORD_SUPPLIES_WEBHOOK_URL) {
+      fetch(DISCORD_SUPPLIES_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: '✅ Suministro Entregado con Éxito en Smash MU',
+              description: `Los suministros solicitados por **${item.characterName}** han sido entregados con éxito en el servidor.`,
+              color: 0x06b6d4,
+              fields: [
+                { name: '👤 Receptor', value: `**${item.characterName}**`, inline: true },
+                { name: '🛡️ Entregado por', value: `**${item.providerName || deliveredBy || 'Intendencia del Clan'}**`, inline: true },
+                { name: '📦 Suministro', value: `${item.supplyType} (${item.quantity})`, inline: true },
+                { name: '📝 Nota Final', value: deliveryNotes || item.providerNotes || 'Entrega concretada.', inline: false },
+              ],
+              footer: { text: 'Canal de Suministros Team · Clan Anomaly Smash MU' },
+              timestamp: now,
+            },
+          ],
+        }),
+      }).catch((e) => console.warn('Webhook deliver notify error:', e.message));
+    }
+
+    res.json({ success: true, request: item });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Actualizar estado de solicitud (Guild Master / Oficial)
 app.put('/api/clan/supply-requests/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const { status, adminNotes, reviewerName } = req.body;
+    const { status, adminNotes, reviewerName, providerName, providerNotes } = req.body;
     const list = getSupplyRequests();
     const item = list.find((r) => r.id === id);
 
@@ -3055,6 +3177,8 @@ app.put('/api/clan/supply-requests/:id', (req, res) => {
     if (status) item.status = status;
     if (adminNotes !== undefined) item.adminNotes = adminNotes;
     if (reviewerName) item.reviewedBy = reviewerName;
+    if (providerName) item.providerName = providerName;
+    if (providerNotes) item.providerNotes = providerNotes;
     item.updatedAt = new Date().toISOString();
 
     saveSupplyRequests(list);
@@ -3076,8 +3200,16 @@ interface InvasionAttendanceRecord {
   invasionSlot: '14:00' | '19:00' | '23:00';
   checkInTime?: string;
   checkOutTime?: string;
+  checkInIso?: string;
+  checkOutIso?: string;
+  durationMinutes?: number;
+  mapReported?: string;
+  squadCode?: string;
   userTimeZone: string;
   status: 'completado' | 'en_progreso';
+  verificationStatus: 'verificado' | 'pendiente_revision' | 'rechazado_fraude';
+  reviewedBy?: string;
+  reviewNotes?: string;
   updatedAt: string;
 }
 
@@ -3120,10 +3252,10 @@ app.get('/api/clan/invasion-attendance', (req, res) => {
   }
 });
 
-// Registrar Check-in (Entrada) o Check-out (Salida) de Invasión
+// Registrar Check-in (Entrada) o Check-out (Salida) de Invasión con Verificación Anti-Trampas
 app.post('/api/clan/invasion-attendance/check', (req, res) => {
   try {
-    const { characterName, invasionSlot, checkType, userTimeZone, localTimeStr } = req.body;
+    const { characterName, invasionSlot, checkType, userTimeZone, localTimeStr, mapReported, squadCode } = req.body;
     if (!characterName || !invasionSlot || !checkType) {
       return res.status(400).json({
         success: false,
@@ -3161,53 +3293,93 @@ app.post('/api/clan/invasion-attendance/check', (req, res) => {
         invasionSlot: slot,
         userTimeZone: userTimeZone || 'America/Santiago',
         status: checkType === 'check_out' ? 'completado' : 'en_progreso',
+        verificationStatus: 'pendiente_revision',
+        mapReported: mapReported || 'Lorencia / Devias',
+        squadCode: squadCode || '',
         updatedAt: nowIso,
       };
       if (checkType === 'check_in') {
         record.checkInTime = localTimeStr || nowIso;
+        record.checkInIso = nowIso;
       } else {
         record.checkOutTime = localTimeStr || nowIso;
+        record.checkOutIso = nowIso;
+        record.durationMinutes = 15; // Estimación estándar si marca directamente salida
       }
       list.push(record);
     } else {
       if (checkType === 'check_in') {
         record.checkInTime = localTimeStr || nowIso;
+        record.checkInIso = nowIso;
+        record.status = 'en_progreso';
+        if (mapReported) record.mapReported = mapReported;
       } else if (checkType === 'check_out') {
         record.checkOutTime = localTimeStr || nowIso;
+        record.checkOutIso = nowIso;
         record.status = 'completado';
+        if (mapReported) record.mapReported = mapReported;
+        if (squadCode) record.squadCode = squadCode;
+
+        // Cálculo de duración real de permanencia en combate (Anti-Speedrun)
+        if (record.checkInIso) {
+          const diffMs = now.getTime() - new Date(record.checkInIso).getTime();
+          record.durationMinutes = Math.max(1, Math.round(diffMs / 60000));
+        } else {
+          record.durationMinutes = 15;
+        }
+
+        // Si la permanencia fue mayor o igual a 8 minutos, pasa a verificado preliminar
+        if (record.durationMinutes && record.durationMinutes >= 8) {
+          record.verificationStatus = 'verificado';
+        } else {
+          record.verificationStatus = 'pendiente_revision';
+        }
       }
       record.updatedAt = nowIso;
     }
 
     saveInvasionAttendance(list);
 
-    // Discord Webhook broadcast
-    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-    if (webhookUrl) {
-      fetch(webhookUrl, {
+    // Webhook dedicado al Canal de Asistencias de Discord (#asistencias)
+    const ATTENDANCE_WEBHOOK_URL =
+      process.env.DISCORD_ATTENDANCE_WEBHOOK_URL ||
+      'https://discord.com/api/webhooks/1569192451216904242/3mAdQcgHwaQ6m-FR_ItvHH6_qZMPakicWcSV9WOwa2UJ6gMMDTprQV6y7iQVVk3W_0fP';
+
+    if (ATTENDANCE_WEBHOOK_URL) {
+      const isCheckIn = checkType === 'check_in';
+      const durationNote = record.durationMinutes ? `${record.durationMinutes} minutos en combate` : 'En curso';
+      const mapNote = record.mapReported || 'Zona de invasión';
+      const antiCheatStatus =
+        record.verificationStatus === 'verificado'
+          ? '🟢 Verificado (Tiempo & Mapa válidos)'
+          : isCheckIn
+          ? '⏳ En Combate Activo'
+          : '🟡 Pendiente de Aprobación por Guild Master';
+
+      fetch(ATTENDANCE_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           embeds: [
             {
-              title:
-                checkType === 'check_in'
-                  ? '⚔️ Asistencia Invasión: ENTRADA Registrada'
-                  : '✅ Asistencia Invasión: SALIDA Completada',
+              title: isCheckIn
+                ? '⚔️ Asistencia Invasión: ENTRADA Registrada'
+                : '✅ Asistencia Invasión: SALIDA Completada',
               description: `El guerrero **${cleanChar}** ha marcado su ${
-                checkType === 'check_in' ? 'entrada' : 'salida'
+                isCheckIn ? 'entrada' : 'salida'
               } en la invasión de las **${slot} hrs (Hora Chile)**.`,
-              color: checkType === 'check_in' ? 0x06b6d4 : 0x10b981,
+              color: isCheckIn ? 0x06b6d4 : 0x10b981,
               fields: [
                 { name: '👤 Personaje', value: cleanChar, inline: true },
                 { name: '⏰ Turno Invasión', value: `${slot} CLT`, inline: true },
                 {
-                  name: '🌍 Hora Local Registrada',
+                  name: '🌍 Hora Registrada',
                   value: `${localTimeStr || 'N/A'} (${userTimeZone || 'Local'})`,
-                  inline: false,
+                  inline: true,
                 },
+                { name: '⏱️ Permanencia en Evento', value: durationNote, inline: true },
               ],
-              footer: { text: 'Control de Asistencias · Clan Anomaly Smash MU' },
+              footer: { text: 'Canal Oficial de Asistencias · Clan Anomaly Smash MU' },
               timestamp: nowIso,
             },
           ],
@@ -3216,6 +3388,110 @@ app.post('/api/clan/invasion-attendance/check', (req, res) => {
     }
 
     res.json({ success: true, record });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint para que el Guild Master (UlmerMG) o Asistente (UlmerDL) audite asistencias
+app.post('/api/clan/invasion-attendance/review', (req, res) => {
+  try {
+    const { attendanceId, decision, reviewerName, reviewNotes } = req.body;
+    if (!attendanceId || !decision || !reviewerName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Faltan parámetros: attendanceId, decision, reviewerName.',
+      });
+    }
+
+    const list = getInvasionAttendance();
+    const record = list.find((r) => r.id === attendanceId);
+    if (!record) {
+      return res.status(404).json({ success: false, error: 'Registro de asistencia no encontrado.' });
+    }
+
+    record.verificationStatus = decision === 'aprobar' ? 'verificado' : 'rechazado_fraude';
+    record.reviewedBy = String(reviewerName).trim();
+    if (reviewNotes) record.reviewNotes = String(reviewNotes).trim();
+    record.updatedAt = new Date().toISOString();
+
+    saveInvasionAttendance(list);
+
+    // Si fue rechazado por fraude, notificar en Discord para que todo el clan mantenga disciplina
+    const ATTENDANCE_WEBHOOK_URL =
+      process.env.DISCORD_ATTENDANCE_WEBHOOK_URL ||
+      'https://discord.com/api/webhooks/1569192451216904242/3mAdQcgHwaQ6m-FR_ItvHH6_qZMPakicWcSV9WOwa2UJ6gMMDTprQV6y7iQVVk3W_0fP';
+
+    if (ATTENDANCE_WEBHOOK_URL && decision === 'rechazar') {
+      fetch(ATTENDANCE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: '🚨 Auditoría de Asistencia: FALTA REGISTRADA',
+              description: `La asistencia de **${record.characterName}** en la invasión de las **${record.invasionSlot} hrs** ha sido rechazada por el **Guild Master (${reviewerName})**.`,
+              color: 0xef4444,
+              fields: [
+                { name: '👤 Personaje', value: record.characterName, inline: true },
+                { name: '⚠️ Motivo', value: reviewNotes || 'No se verificó presencia real en el juego / Falta de combate', inline: true },
+                { name: '⚖️ Dictaminado por', value: reviewerName, inline: true },
+              ],
+              footer: { text: 'Comandancia del Clan Anomaly · Tolerancia Cero al Fraude' },
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        }),
+      }).catch((e) => console.warn('Invasion review webhook notice:', e.message));
+    }
+
+    res.json({ success: true, record });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Registrar Asistencia / Disponibilidad para Castle Siege en el canal de asistencias
+app.post('/api/clan/siege-attendance', (req, res) => {
+  try {
+    const { characterName, status } = req.body;
+    if (!characterName || !status) {
+      return res.status(400).json({ success: false, error: 'Faltan parámetros: characterName, status.' });
+    }
+
+    const cleanChar = String(characterName).trim();
+    const statusText =
+      status === 'confirmed' ? 'DISPONIBLE PARA EL ASEDIO' : status === 'absent' ? 'NO DISPONIBLE' : 'EN DUDA';
+    const statusColor = status === 'confirmed' ? 0x10b981 : status === 'absent' ? 0xef4444 : 0xf59e0b;
+    const nowIso = new Date().toISOString();
+
+    const ATTENDANCE_WEBHOOK_URL =
+      process.env.DISCORD_ATTENDANCE_WEBHOOK_URL ||
+      'https://discord.com/api/webhooks/1569192451216904242/3mAdQcgHwaQ6m-FR_ItvHH6_qZMPakicWcSV9WOwa2UJ6gMMDTprQV6y7iQVVk3W_0fP';
+
+    if (ATTENDANCE_WEBHOOK_URL) {
+      fetch(ATTENDANCE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: '🏰 Disponibilidad Castle Siege Actualizada',
+              description: `El guerrero **${cleanChar}** ha actualizado su disponibilidad para el próximo asedio.`,
+              color: statusColor,
+              fields: [
+                { name: '👤 Personaje', value: cleanChar, inline: true },
+                { name: '⚔️ Estado', value: `**${statusText}**`, inline: true },
+              ],
+              footer: { text: 'Canal Oficial de Asistencias · Clan Anomaly Smash MU' },
+              timestamp: nowIso,
+            },
+          ],
+        }),
+      }).catch((e) => console.warn('Siege webhook notice:', e.message));
+    }
+
+    res.json({ success: true, characterName: cleanChar, status });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

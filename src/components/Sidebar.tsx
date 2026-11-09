@@ -97,13 +97,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: UserCheck,
         },
         {
-          id: 'vault',
-          label: 'Cuentas & Baúles',
-          sublabel: 'Buffer Elfs & Mulas',
-          icon: Package,
-          badge: { text: 'CLAN' },
-        },
-        {
           id: 'auction',
           label: 'Subasta del Baúl',
           sublabel: 'Pujas de ítems raros',
