@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { cleanMuItemName, getItemSprite } from '../src/utils/itemSprites.ts';
 import { getSmashMuItemByName, getSmashMuImageUrl, searchMuItems, SMASHMU_ITEM_CATALOG } from '../src/utils/muItemsDatabase.ts';
+import { createBlobAuctionStorage, mutateAuctions } from './auctionStore.ts';
 
 const app = express();
 
@@ -978,9 +979,8 @@ router.get('/items/catalog', (_req: Request, res: Response) => {
   res.json({ success: true, count: SMASHMU_ITEM_CATALOG.length, catalog: SMASHMU_ITEM_CATALOG });
 });
 
-// In-Memory Auctions DB for Vercel + /tmp storage
-const VERCEL_AUCTIONS_PATH = '/tmp/auctions_db.json';
-let inMemoryAuctions: any[] = [
+// Existing catalog entries are shown until the first persistent write.
+const seedAuctions: any[] = [
   {
     id: 'auc-legendary-gloves-7',
     es_subasta: true,
@@ -1055,25 +1055,18 @@ let inMemoryAuctions: any[] = [
   },
 ];
 
-function getVercelAuctions(): any[] {
-  try {
-    if (fs.existsSync(VERCEL_AUCTIONS_PATH)) {
-      const parsed = JSON.parse(fs.readFileSync(VERCEL_AUCTIONS_PATH, 'utf-8'));
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch (e) {
-    // fallback
-  }
-  return inMemoryAuctions;
+function auctionStorage() {
+  const testPath = process.env.NODE_ENV === 'test' ? process.env.AUCTIONS_BLOB_PATH : undefined;
+  return createBlobAuctionStorage<any>(seedAuctions, testPath);
 }
 
-function saveVercelAuctions(items: any[]) {
-  inMemoryAuctions = items;
-  try {
-    fs.writeFileSync(VERCEL_AUCTIONS_PATH, JSON.stringify(items, null, 2), 'utf-8');
-  } catch (e) {
-    // ignore
-  }
+async function rememberDiscordMessage(id: string, messageId: string) {
+  await mutateAuctions(auctionStorage(), (items) => {
+    const item = items.find((entry) => entry.id === id);
+    if (!item || item.discord_message_id === messageId) return null;
+    item.discord_message_id = messageId;
+    return true;
+  });
 }
 
 // =========================================================================
@@ -1302,8 +1295,13 @@ async function enviarMensajeDiscordSubasta(
 }
 
 // 4. Auctions Endpoints
-router.get('/auctions', (_req: Request, res: Response) => {
-  res.json({ success: true, auctions: getVercelAuctions() });
+router.get('/auctions', async (_req: Request, res: Response) => {
+  try {
+    const { items } = await auctionStorage().read();
+    res.json({ success: true, auctions: items });
+  } catch (err: any) {
+    res.status(503).json({ success: false, error: err.message });
+  }
 });
 
 router.post('/auctions', async (req: Request, res: Response) => {
@@ -1328,6 +1326,9 @@ router.post('/auctions', async (req: Request, res: Response) => {
       endsAt: raw.endsAt || (Date.now() + 12 * 3600 * 1000),
     };
 
+    const storage = auctionStorage();
+    await storage.read();
+
     // DISPATCH A DISCORD (#Subastas)
     if (newItem.es_subasta !== false) {
       const payload = buildDiscordAuctionEmbed(newItem, 'publicada');
@@ -1338,9 +1339,21 @@ router.post('/auctions', async (req: Request, res: Response) => {
       newItem.discord_message_id = discordRes.id;
     }
 
-    const list = getVercelAuctions();
-    list.unshift(newItem);
-    saveVercelAuctions(list);
+    try {
+      await mutateAuctions(storage, (list) => {
+        if (list.some((item) => item.id === newItem.id)) throw new Error('Ya existe una subasta con ese ID.');
+        list.unshift(newItem);
+      });
+    } catch (storageError) {
+      if (newItem.discord_message_id && DISCORD_AUCTION_WEBHOOK_URL) {
+        try {
+          await fetch(`${DISCORD_AUCTION_WEBHOOK_URL}/messages/${newItem.discord_message_id}`, { method: 'DELETE' });
+        } catch (cleanupError) {
+          console.warn('[Discord Vercel] No se pudo retirar el anuncio tras fallar el guardado:', cleanupError);
+        }
+      }
+      throw storageError;
+    }
     res.json({ success: true, item: newItem });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -1351,17 +1364,18 @@ router.post('/auctions/:id/bid', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { amount, bidder } = req.body;
-    const list = getVercelAuctions();
-    const item = list.find((a) => a.id === id);
-    if (!item) return res.status(404).json({ success: false, error: 'Subasta no encontrada' });
-
     const newBid = Number(amount);
-    if (isNaN(newBid) || newBid <= (item.currentBid || item.startingBid || 0)) {
-      return res.status(400).json({ success: false, error: 'La puja debe superar la oferta actual.' });
-    }
-
-    item.currentBid = newBid;
-    item.highestBidder = bidder || 'Anónimo';
+    if (!Number.isFinite(newBid)) return res.status(400).json({ success: false, error: 'Puja inválida.' });
+    const item = await mutateAuctions(auctionStorage(), (list) => {
+      const current = list.find((a) => a.id === id);
+      if (!current) return null;
+      if (newBid <= (current.currentBid || current.startingBid || 0)) return false;
+      current.currentBid = newBid;
+      current.highestBidder = bidder || 'Anónimo';
+      return structuredClone(current);
+    });
+    if (item === null) return res.status(404).json({ success: false, error: 'Subasta no encontrada' });
+    if (item === false) return res.status(400).json({ success: false, error: 'La puja debe superar la oferta actual.' });
 
     // Sincronizar puja con Discord
     if (item.es_subasta !== false) {
@@ -1370,13 +1384,13 @@ router.post('/auctions/:id/bid', async (req: Request, res: Response) => {
         const discordRes = await enviarMensajeDiscordSubasta(payload, item.discord_message_id);
         if (discordRes.success && discordRes.id) {
           item.discord_message_id = discordRes.id;
+          await rememberDiscordMessage(id, discordRes.id);
         }
       } catch (e: any) {
         console.warn('[Discord Vercel] Error sync bid Discord:', e.message);
       }
     }
 
-    saveVercelAuctions(list);
     res.json({ success: true, item });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -1387,14 +1401,16 @@ router.post('/auctions/:id/sell', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { precioFinal, ganador } = req.body;
-    const list = getVercelAuctions();
-    const item = list.find((a) => a.id === id);
+    const item = await mutateAuctions(auctionStorage(), (list) => {
+      const current = list.find((a) => a.id === id);
+      if (!current) return null;
+      current.status = 'sold';
+      current.estado = 'Vendido';
+      current.currentBid = precioFinal || current.buyoutPrice || current.currentBid;
+      current.highestBidder = ganador || current.highestBidder || 'Comprador Inmediato';
+      return structuredClone(current);
+    });
     if (!item) return res.status(404).json({ success: false, error: 'Subasta no encontrada' });
-
-    item.status = 'sold';
-    item.estado = 'Vendido';
-    item.currentBid = precioFinal || item.buyoutPrice || item.currentBid;
-    item.highestBidder = ganador || item.highestBidder || 'Comprador Inmediato';
 
     // Sincronizar venta con Discord
     if (item.es_subasta !== false) {
@@ -1406,13 +1422,13 @@ router.post('/auctions/:id/sell', async (req: Request, res: Response) => {
         const discordRes = await enviarMensajeDiscordSubasta(payload, item.discord_message_id);
         if (discordRes.success && discordRes.id) {
           item.discord_message_id = discordRes.id;
+          await rememberDiscordMessage(id, discordRes.id);
         }
       } catch (e: any) {
         console.warn('[Discord Vercel] Error sync sell Discord:', e.message);
       }
     }
 
-    saveVercelAuctions(list);
     res.json({ success: true, item });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -1423,14 +1439,16 @@ router.post('/auctions/:id/notify-sold', async (req: Request, res: Response) => 
   try {
     const { id } = req.params;
     const { precioFinal, ganador } = req.body;
-    const list = getVercelAuctions();
-    const item = list.find((a) => a.id === id);
+    const item = await mutateAuctions(auctionStorage(), (list) => {
+      const current = list.find((a) => a.id === id);
+      if (!current) return null;
+      current.status = 'sold';
+      current.estado = 'Vendido';
+      if (precioFinal) current.currentBid = precioFinal;
+      if (ganador) current.highestBidder = ganador;
+      return structuredClone(current);
+    });
     if (!item) return res.status(404).json({ success: false, error: 'Subasta no encontrada' });
-
-    item.status = 'sold';
-    item.estado = 'Vendido';
-    if (precioFinal) item.currentBid = precioFinal;
-    if (ganador) item.highestBidder = ganador;
 
     // Publicar anuncio directo de VENDIDO en Discord
     const payload = buildDiscordAuctionEmbed(item, 'vendida', {
@@ -1440,9 +1458,9 @@ router.post('/auctions/:id/notify-sold', async (req: Request, res: Response) => 
     const discordRes = await enviarMensajeDiscordSubasta(payload, item.discord_message_id);
     if (discordRes.success && discordRes.id) {
       item.discord_message_id = discordRes.id;
+      await rememberDiscordMessage(id, discordRes.id);
     }
 
-    saveVercelAuctions(list);
     res.json({ success: true, item });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -1453,27 +1471,29 @@ router.put('/auctions/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    const list = getVercelAuctions();
-    const index = list.findIndex((a) => a.id === id);
-    if (index === -1) return res.status(404).json({ success: false, error: 'Subasta no encontrada' });
-
-    list[index] = { ...list[index], ...updates };
+    const item = await mutateAuctions(auctionStorage(), (list) => {
+      const index = list.findIndex((a) => a.id === id);
+      if (index === -1) return null;
+      list[index] = { ...list[index], ...updates, id };
+      return structuredClone(list[index]);
+    });
+    if (!item) return res.status(404).json({ success: false, error: 'Subasta no encontrada' });
 
     // Sincronizar edición con Discord
-    if (list[index].es_subasta !== false) {
+    if (item.es_subasta !== false) {
       try {
-        const payload = buildDiscordAuctionEmbed(list[index], 'corregida');
-        const discordRes = await enviarMensajeDiscordSubasta(payload, list[index].discord_message_id);
+        const payload = buildDiscordAuctionEmbed(item, 'corregida');
+        const discordRes = await enviarMensajeDiscordSubasta(payload, item.discord_message_id);
         if (discordRes.success && discordRes.id) {
-          list[index].discord_message_id = discordRes.id;
+          item.discord_message_id = discordRes.id;
+          await rememberDiscordMessage(id, discordRes.id);
         }
       } catch (e: any) {
         console.warn('[Discord Vercel] Error sync edit Discord:', e.message);
       }
     }
 
-    saveVercelAuctions(list);
-    res.json({ success: true, item: list[index] });
+    res.json({ success: true, item });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1482,20 +1502,23 @@ router.put('/auctions/:id', async (req: Request, res: Response) => {
 router.delete('/auctions/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const list = getVercelAuctions();
-    const item = list.find((a) => a.id === id);
-
-    if (item && item.discord_message_id) {
+    const item = await mutateAuctions(auctionStorage(), (list) => {
+      const index = list.findIndex((a) => a.id === id);
+      if (index === -1) return null;
+      return list.splice(index, 1)[0];
+    });
+    if (!item) return res.status(404).json({ success: false, error: 'Subasta no encontrada' });
+    if (item.discord_message_id && DISCORD_AUCTION_WEBHOOK_URL) {
       try {
         const deleteUrl = `${DISCORD_AUCTION_WEBHOOK_URL}/messages/${item.discord_message_id}`;
-        await fetch(deleteUrl, { method: 'DELETE' });
+        const discordDelete = await fetch(deleteUrl, { method: 'DELETE' });
+        if (!discordDelete.ok && discordDelete.status !== 404) {
+          console.warn('[Discord Vercel] Discord rechazó el borrado:', discordDelete.status);
+        }
       } catch (e: any) {
         console.warn('[Discord Vercel] Error deleting discord message:', e.message);
       }
     }
-
-    const updated = list.filter((a) => a.id !== id);
-    saveVercelAuctions(updated);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
