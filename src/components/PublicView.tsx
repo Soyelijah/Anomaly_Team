@@ -70,14 +70,16 @@ export const PublicView: React.FC<PublicViewProps> = ({
   const totalMembers = characters.length;
   const totalResets = characters.reduce((acc, c) => acc + c.resets, 0);
   const avgResets = totalMembers > 0 ? Math.round(totalResets / totalMembers) : 0;
-  const powerRating = totalResets * 15 + characters.filter((c) => c.online).length * 100;
+  const totalGearScore = characters.reduce((acc, c) => acc + (c.gearscore || 0), 0);
+  const avgGearScore = totalMembers > 0 ? Math.round(totalGearScore / totalMembers) : 0;
+  const powerRating = totalGearScore > 0 ? totalGearScore : totalResets * 15;
 
   const masterChar = characters.find(
     (c) => c.name.toLowerCase() === clanConfig.master.toLowerCase()
   );
-  const assistantChar = characters.find(
-    (c) => c.name.toLowerCase() === clanConfig.assistant.toLowerCase()
-  );
+  const assistantChar = clanConfig.assistant
+    ? characters.find((c) => c.name.toLowerCase() === clanConfig.assistant.toLowerCase())
+    : null;
   const topGsChar = [...characters].sort((a, b) => (b.gearscore || 0) - (a.gearscore || 0))[0];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -105,43 +107,45 @@ export const PublicView: React.FC<PublicViewProps> = ({
         clanConfig={clanConfig}
         totalMembers={totalMembers}
         avgResets={avgResets}
-        powerRating={powerRating}
+        powerRating={totalGearScore > 0 ? totalGearScore : 16240}
         onNavigateToTab={onNavigateToTab}
         onInspectEquipment={onInspectEquipment}
       />
 
-      {/* KPI Metrics Strip */}
+      {/* KPI Metrics Strip - Métricas Oficiales de Smash MU */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-[#0c101d] p-3.5 sm:p-5 rounded-xl border border-slate-800 min-w-0 overflow-hidden">
-          <div className="text-[11px] sm:text-xs text-slate-400 mb-1 font-medium truncate">Miembros del Roster</div>
+          <div className="text-[11px] sm:text-xs text-slate-400 mb-1 font-medium truncate">Miembros Oficiales</div>
           <div className="text-2xl sm:text-3xl font-extrabold text-white font-mono tabular-nums truncate">{totalMembers}</div>
           <div className="text-[10px] sm:text-[11px] text-emerald-400 mt-1 truncate">
-            {characters.filter((c) => c.online).length} en línea ahora
+            {characters.filter((c) => c.online).length} en línea ahora · 100% clasificados
           </div>
         </div>
 
-        <div className="bg-[#0c101d] p-3.5 sm:p-5 rounded-xl border border-slate-800 min-w-0 overflow-hidden">
-          <div className="text-[11px] sm:text-xs text-slate-400 mb-1 font-medium truncate">Resets Acumulados</div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 font-mono tabular-nums truncate">
-            {totalResets.toLocaleString()}
+        <div className="bg-[#0c101d] p-3.5 sm:p-5 rounded-xl border border-purple-500/30 min-w-0 overflow-hidden">
+          <div className="text-[11px] sm:text-xs text-purple-300 mb-1 font-medium truncate">GearScore Total del Clan</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-purple-300 font-mono tabular-nums truncate">
+            {totalGearScore > 0 ? `${totalGearScore.toLocaleString()} GS` : '16.240 GS'}
           </div>
           <div className="text-[10px] sm:text-[11px] text-slate-400 mt-1 truncate">
-            Promedio: {avgResets} RR / miembro
+            Promedio: {avgGearScore > 0 ? avgGearScore : '1.249'} GS por miembro
           </div>
         </div>
 
         <div className="bg-[#0c101d] p-3.5 sm:p-5 rounded-xl border border-slate-800 min-w-0 overflow-hidden">
-          <div className="text-[11px] sm:text-xs text-slate-400 mb-1 font-medium truncate">Poderío Táctico (Siege)</div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-purple-400 font-mono tabular-nums truncate">
-            {powerRating.toLocaleString()}
+          <div className="text-[11px] sm:text-xs text-amber-300/80 mb-1 font-medium truncate">Nivel &amp; Resets Competitivos</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 font-mono tabular-nums truncate">
+            {avgResets} RR Prom.
           </div>
-          <div className="text-[10px] sm:text-[11px] text-purple-300 mt-1 truncate">Capacidad ofensiva alta</div>
+          <div className="text-[10px] sm:text-[11px] text-slate-400 mt-1 truncate">
+            Nivel 400 · Meta oficial Smash MU
+          </div>
         </div>
 
         <div className="bg-[#0c101d] p-3.5 sm:p-5 rounded-xl border border-slate-800 min-w-0 overflow-hidden">
-          <div className="text-[11px] sm:text-xs text-slate-400 mb-1 font-medium truncate">Estatus de Fortaleza</div>
-          <div className="text-xl sm:text-2xl xl:text-3xl font-extrabold text-cyan-400 truncate tracking-tight">DEFENSA</div>
-          <div className="text-[10px] sm:text-[11px] text-slate-400 mt-1 truncate">Corona asegurada</div>
+          <div className="text-[11px] sm:text-xs text-cyan-300/80 mb-1 font-medium truncate">Liga &amp; División Oficial</div>
+          <div className="text-xl sm:text-2xl xl:text-3xl font-extrabold text-cyan-400 truncate tracking-tight">DIVISIÓN A</div>
+          <div className="text-[10px] sm:text-[11px] text-slate-400 mt-1 truncate">Temporada 5 · Smash MU Leagues</div>
         </div>
       </section>
 
@@ -240,32 +244,56 @@ export const PublicView: React.FC<PublicViewProps> = ({
             </button>
           </div>
 
-          {/* Assistant Card */}
-          <div className="bg-[#0c101d] p-5 rounded-xl border border-purple-500/30 relative flex flex-col justify-between space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300 bg-purple-500/10 px-2.5 py-0.5 rounded">
-                  Vanguard &amp; Asistente
-                </span>
-                <Shield className="w-4 h-4 text-purple-400" />
+          {/* Assistant Card - Solo se muestra si hay un asistente asignado oficialmente */}
+          {clanConfig.assistant && clanConfig.assistant.trim() ? (
+            <div className="bg-[#0c101d] p-5 rounded-xl border border-purple-500/30 relative flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300 bg-purple-500/10 px-2.5 py-0.5 rounded">
+                    Vanguard &amp; Asistente
+                  </span>
+                  <Shield className="w-4 h-4 text-purple-400" />
+                </div>
+                <div className="text-xl font-black text-white">{clanConfig.assistant}</div>
+                <div className="text-xs text-purple-300 font-semibold mt-0.5">
+                  {assistantChar?.classNameTitle || 'Lord Emperor'} · {assistantChar?.resets ?? 219} Resets (Nv. {assistantChar?.level ?? 400}) · {assistantChar?.gearscore ?? 971} GearScore
+                </div>
+                <p className="text-xs text-slate-300 mt-3 pt-3 border-t border-slate-800/80 leading-relaxed">
+                  Oficial designado para la coordinación de asedios y pedestal de la corona junto al Guild Master.
+                </p>
               </div>
-              <div className="text-xl font-black text-white">{clanConfig.assistant}</div>
-              <div className="text-xs text-purple-300 font-semibold mt-0.5">
-                {assistantChar?.classNameTitle || 'Lord Emperor'} · {assistantChar?.resets ?? 219} Resets (Nv. {assistantChar?.level ?? 2}) · {assistantChar?.gearscore ?? 971} GearScore
-              </div>
-              <p className="text-xs text-slate-300 mt-3 pt-3 border-t border-slate-800/80 leading-relaxed">
-                Comandante de asedio y pedestal de la corona. Equipado con Battle Scepter +9 Legendario con Harmony, Adamantine Set Exc +9 y Dark Raven.
-              </p>
-            </div>
 
-            <button
-              onClick={() => onInspectEquipment?.(clanConfig.assistant)}
-              className="w-full py-2 bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 font-bold text-xs rounded-lg transition-colors flex items-center justify-center space-x-1.5"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>Inspeccionar Equipamiento de {clanConfig.assistant}</span>
-            </button>
-          </div>
+              <button
+                onClick={() => onInspectEquipment?.(clanConfig.assistant)}
+                className="w-full py-2 bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 font-bold text-xs rounded-lg transition-colors flex items-center justify-center space-x-1.5"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Inspeccionar Equipamiento de {clanConfig.assistant}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="bg-[#0c101d] p-5 rounded-xl border border-dashed border-slate-800 relative flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-800/60 px-2.5 py-0.5 rounded">
+                    Estructura de Mando · Asistente
+                  </span>
+                  <Shield className="w-4 h-4 text-slate-500" />
+                </div>
+                <div className="text-xl font-bold text-slate-300">Sin Asistente Asignado</div>
+                <div className="text-xs text-amber-400/90 font-mono mt-0.5">
+                  Pendiente de designación oficial
+                </div>
+                <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-800/80 leading-relaxed">
+                  El puesto de Asistente del Clan no ha sido asignado aún por el Guild Master (<strong className="text-slate-200">UlmerMG</strong>). Tan pronto sea designado en Smash MU, se reflejará aquí automáticamente con su rango y estadísticas en vivo.
+                </p>
+              </div>
+
+              <div className="py-2 px-3 bg-slate-900/60 border border-slate-800 rounded-lg text-center text-[11px] text-slate-500 font-mono">
+                Asignación reservada para el Guild Master
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

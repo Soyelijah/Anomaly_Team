@@ -1044,6 +1044,199 @@ router.delete('/auctions/:id', (req: Request, res: Response) => {
   }
 });
 
+// ============================================================================
+// SUPPLY REQUESTS & INVASION ATTENDANCE (VERCEL SERVERLESS)
+// ============================================================================
+let inMemorySupplyRequests: any[] = [];
+let inMemoryInvasionAttendance: any[] = [];
+const VERCEL_SUPPLIES_FILE = '/tmp/supply_requests.json';
+const VERCEL_INVASIONS_FILE = '/tmp/invasion_attendance.json';
+
+function getVercelSupplyRequests(): any[] {
+  try {
+    if (fs.existsSync(VERCEL_SUPPLIES_FILE)) {
+      const data = JSON.parse(fs.readFileSync(VERCEL_SUPPLIES_FILE, 'utf-8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch (e) {}
+  return inMemorySupplyRequests;
+}
+
+function saveVercelSupplyRequests(list: any[]) {
+  inMemorySupplyRequests = list;
+  try {
+    fs.writeFileSync(VERCEL_SUPPLIES_FILE, JSON.stringify(list, null, 2), 'utf-8');
+  } catch (e) {}
+}
+
+function getVercelInvasionAttendance(): any[] {
+  try {
+    if (fs.existsSync(VERCEL_INVASIONS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(VERCEL_INVASIONS_FILE, 'utf-8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch (e) {}
+  return inMemoryInvasionAttendance;
+}
+
+function saveVercelInvasionAttendance(list: any[]) {
+  inMemoryInvasionAttendance = list;
+  try {
+    fs.writeFileSync(VERCEL_INVASIONS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+  } catch (e) {}
+}
+
+router.get('/clan/supply-requests', (req: Request, res: Response) => {
+  try {
+    const { characterName } = req.query;
+    let list = getVercelSupplyRequests();
+    if (characterName) {
+      const clean = String(characterName).toLowerCase();
+      list = list.filter((r) => r.characterName.toLowerCase() === clean);
+    }
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    res.json({ success: true, count: list.length, requests: list });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/clan/supply-requests', (req: Request, res: Response) => {
+  try {
+    const { characterName, supplyType, quantity, urgency, notes } = req.body;
+    if (!characterName || !supplyType || !quantity) {
+      return res.status(400).json({
+        success: false,
+        error: 'Debes especificar el personaje, tipo de suministro y cantidad requerida.',
+      });
+    }
+
+    const list = getVercelSupplyRequests();
+    const now = new Date().toISOString();
+    const newRequest = {
+      id: `req-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      characterName: String(characterName).trim(),
+      supplyType: String(supplyType).trim(),
+      quantity: String(quantity).trim(),
+      urgency: urgency === 'alta' ? 'alta' : urgency === 'media' ? 'media' : 'normal',
+      notes: notes ? String(notes).trim() : '',
+      status: 'pendiente',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    list.unshift(newRequest);
+    saveVercelSupplyRequests(list);
+    res.json({ success: true, request: newRequest });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.put('/clan/supply-requests/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNotes, reviewerName } = req.body;
+    const list = getVercelSupplyRequests();
+    const item = list.find((r) => r.id === id);
+
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Solicitud no encontrada.' });
+    }
+
+    if (status) item.status = status;
+    if (adminNotes !== undefined) item.adminNotes = adminNotes;
+    if (reviewerName) item.reviewedBy = reviewerName;
+    item.updatedAt = new Date().toISOString();
+
+    saveVercelSupplyRequests(list);
+    res.json({ success: true, request: item });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/clan/invasion-attendance', (req: Request, res: Response) => {
+  try {
+    const { characterName, date } = req.query;
+    let list = getVercelInvasionAttendance();
+    if (characterName) {
+      const clean = String(characterName).toLowerCase();
+      list = list.filter((r) => r.characterName.toLowerCase() === clean);
+    }
+    if (date) {
+      list = list.filter((r) => r.date === String(date));
+    }
+    res.json({ success: true, records: list });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/clan/invasion-attendance/check', (req: Request, res: Response) => {
+  try {
+    const { characterName, invasionSlot, checkType, userTimeZone, localTimeStr } = req.body;
+    if (!characterName || !invasionSlot || !checkType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Faltan parámetros: characterName, invasionSlot, checkType.',
+      });
+    }
+
+    const now = new Date();
+    const chileDateStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(now);
+
+    const list = getVercelInvasionAttendance();
+    const cleanChar = String(characterName).trim();
+    const slot = invasionSlot as '14:00' | '19:00' | '23:00';
+
+    let record = list.find(
+      (r) =>
+        r.characterName.toLowerCase() === cleanChar.toLowerCase() &&
+        r.date === chileDateStr &&
+        r.invasionSlot === slot
+    );
+
+    const nowIso = now.toISOString();
+
+    if (!record) {
+      record = {
+        id: `inv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        characterName: cleanChar,
+        date: chileDateStr,
+        invasionSlot: slot,
+        userTimeZone: userTimeZone || 'America/Santiago',
+        status: checkType === 'check_out' ? 'completado' : 'en_progreso',
+        updatedAt: nowIso,
+      };
+      if (checkType === 'check_in') {
+        record.checkInTime = localTimeStr || nowIso;
+      } else {
+        record.checkOutTime = localTimeStr || nowIso;
+      }
+      list.push(record);
+    } else {
+      if (checkType === 'check_in') {
+        record.checkInTime = localTimeStr || nowIso;
+      } else if (checkType === 'check_out') {
+        record.checkOutTime = localTimeStr || nowIso;
+        record.status = 'completado';
+      }
+      record.updatedAt = nowIso;
+    }
+
+    saveVercelInvasionAttendance(list);
+    res.json({ success: true, record });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Mount router on both '/api' and '/' to guarantee routing regardless of path stripping
 app.use('/api', router);
 app.use('/', router);

@@ -551,39 +551,57 @@ export const TeamAuthGate: React.FC<TeamAuthGateProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div className="space-y-1">
-                  <label className="block text-slate-300 font-semibold text-[11px]">
-                    ID de Login en Smash MU:
+                  <label className="block text-slate-300 font-semibold text-[11px] uppercase tracking-wider font-mono">
+                    ID de Cuenta:
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Tu usuario en Smash MU"
                     value={regLoginId}
                     onChange={(e) => setRegLoginId(e.target.value)}
                     className="w-full bg-[#04060d] border border-slate-700/80 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500 transition-colors text-xs font-mono"
                     disabled={isLoading || isGeneratingCode}
                   />
-                  <p className="text-[10px] text-slate-500">
-                    Tu nombre de cuenta o usuario único.
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Identificador de cuenta en el servidor Smash MU.
                   </p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-300 font-semibold text-[11px]">
-                    Nombre de Personaje:
+                  <label className="block text-slate-300 font-semibold text-[11px] uppercase tracking-wider font-mono">
+                    Nombre del Personaje:
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Ej: SkyTM, MATONSITO..."
                     value={regCharName}
                     onChange={(e) => setRegCharName(e.target.value)}
                     className="w-full bg-[#04060d] border border-slate-700/80 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500 transition-colors text-xs font-mono font-bold"
                     disabled={isLoading || isGeneratingCode}
                   />
-                  <p className="text-[10px] text-slate-500">
-                    Tu PJ principal de Anomaly u otro clan.
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Nombre del personaje en el servidor Smash MU.
                   </p>
+                </div>
+              </div>
+
+              {/* Verified characters quick select for convenience */}
+              <div className="pt-2 border-t border-slate-800/60">
+                <div className="text-[10px] text-slate-400 font-mono uppercase mb-1.5 flex items-center justify-between">
+                  <span>Personajes Oficiales del Servidor (Smash MU):</span>
+                  <span className="text-purple-400">Verificados</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {['SkyTM', 'MATONSITO', 'UlmerMG', 'SavioGM', 'Matthew', 'Pocajontas', 'rusbelx23', 'prinmestis'].map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setRegCharName(name)}
+                      className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-purple-950/60 border border-slate-800 hover:border-purple-500/50 text-slate-300 hover:text-white text-[10px] font-mono transition-all cursor-pointer"
+                    >
+                      {name}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -709,20 +727,22 @@ export const TeamAuthGate: React.FC<TeamAuthGateProps> = ({
               )}
 
               {/* Input manual del código si ya lo tienen de Discord */}
-              <div className="space-y-1 pt-1">
-                <label className="block text-slate-300 font-semibold text-[11px] flex items-center justify-between">
-                  <span>Código de Verificación Recibido:</span>
-                  <span className="text-[10px] text-slate-400 font-mono">Ej: ANM-7492</span>
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-slate-300 font-semibold text-[11px] uppercase tracking-wider font-mono flex items-center justify-between">
+                  <span>Código de Verificación:</span>
+                  <span className="text-[10px] text-purple-400 font-mono">Canal Discord</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ingresa el código (ej: ANM-7492)"
                   value={regDiscordCode}
                   onChange={(e) => setRegDiscordCode(e.target.value)}
                   className="w-full bg-[#04060d] border border-purple-500/40 rounded-xl p-2.5 text-purple-200 font-mono font-bold uppercase tracking-wider focus:outline-none focus:border-purple-400 transition-colors text-xs"
                   disabled={isLoading}
                 />
+                <p className="text-[10px] text-slate-400 font-mono">
+                  Token temporal recibido en el canal oficial de Discord.
+                </p>
               </div>
             </div>
 
@@ -733,26 +753,26 @@ export const TeamAuthGate: React.FC<TeamAuthGateProps> = ({
                   <span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] font-black">
                     3
                   </span>
-                  <span>Crea tu Contraseña para la Web</span>
+                  <span>Contraseña de Acceso para la Web</span>
                 </span>
                 <span className="text-[10px] text-pink-400 font-semibold uppercase">Paso 3 de 3</span>
               </div>
 
-              <div className="space-y-1 pt-1">
-                <label className="block text-slate-300 font-semibold text-[11px]">
-                  Contraseña o PIN personal:
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-slate-300 font-semibold text-[11px] uppercase tracking-wider font-mono">
+                  Contraseña o PIN Personal:
                 </label>
                 <input
                   type="password"
                   required
-                  placeholder="Crea tu clave secreta para entrar en el futuro"
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
+                  autoComplete="new-password"
                   className="w-full bg-[#04060d] border border-slate-700/80 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500 transition-colors text-xs font-mono tracking-widest"
                   disabled={isLoading}
                 />
-                <p className="text-[10px] text-slate-500">
-                  Solo tú podrás ingresar a tu panel de asistencia y estadísticas con esta clave.
+                <p className="text-[10px] text-slate-400 font-mono">
+                  Clave privada requerida para ingresar a tu panel en futuras sesiones.
                 </p>
               </div>
             </div>
@@ -782,37 +802,41 @@ export const TeamAuthGate: React.FC<TeamAuthGateProps> = ({
         {/* TAB 2: INICIAR SESIÓN */}
         {activeTab === 'login' && (
           <form onSubmit={handleLogin} className="space-y-4 text-xs">
-            <div className="bg-[#070a16] p-4 rounded-2xl border border-slate-800/80 space-y-3">
-              <div className="space-y-1">
-                <label className="block text-slate-300 font-semibold text-[11px]">
-                  ID de Login o Nombre de Personaje:
+            <div className="bg-[#070a16] p-4 rounded-2xl border border-slate-800/80 space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-slate-300 font-semibold text-[11px] uppercase tracking-wider font-mono">
+                  ID de Cuenta o Nombre de Personaje:
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ej: tu_usuario_mu o SkyTM"
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
-                  className="w-full bg-[#04060d] border border-slate-700/80 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-xs font-mono"
+                  autoComplete="username"
+                  className="w-full bg-[#04060d] border border-slate-700/80 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 transition-all text-xs font-mono"
                   disabled={isLoading}
                 />
-                <p className="text-[10px] text-slate-500">
-                  Puedes entrar tanto con tu ID de Login como con el nick de tu Personaje.
+                <p className="text-[10px] text-slate-400 font-mono">
+                  Identificador de cuenta Smash MU o nombre del personaje registrado.
                 </p>
               </div>
 
-              <div className="space-y-1">
-                <label className="block text-slate-300 font-semibold text-[11px]">
-                  Contraseña o PIN:
+              <div className="space-y-1.5">
+                <label className="block text-slate-300 font-semibold text-[11px] uppercase tracking-wider font-mono">
+                  Contraseña / PIN de Seguridad:
                 </label>
                 <input
                   type="password"
-                  placeholder="Tu contraseña registrada"
+                  required
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full bg-[#04060d] border border-slate-700/80 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-xs font-mono tracking-widest"
+                  autoComplete="current-password"
+                  className="w-full bg-[#04060d] border border-slate-700/80 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 transition-all text-xs font-mono tracking-widest"
                   disabled={isLoading}
                 />
+                <p className="text-[10px] text-slate-400 font-mono">
+                  Clave privada establecida durante el registro.
+                </p>
               </div>
             </div>
 
@@ -824,7 +848,7 @@ export const TeamAuthGate: React.FC<TeamAuthGateProps> = ({
               {isLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                  <span>Validando credenciales...</span>
+                  <span>Validando credenciales en Smash MU...</span>
                 </>
               ) : (
                 <>

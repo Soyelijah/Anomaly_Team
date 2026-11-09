@@ -239,29 +239,29 @@ export const ClanHeroBanner: React.FC<ClanHeroBannerProps> = ({
               </div>
             </div>
 
-            {/* Power Rating Gauge */}
+            {/* Clan Total GearScore Gauge */}
             <div className="bg-gradient-to-r from-purple-950/40 to-slate-950/80 border border-purple-500/20 p-3 rounded-lg">
               <div className="flex items-center justify-between text-xs mb-1">
                 <span className="text-slate-400 font-mono text-[11px] flex items-center space-x-1">
                   <Flame className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Poder de Alianza</span>
+                  <span>GearScore del Clan</span>
                 </span>
                 <span className="text-purple-300 font-bold font-mono">
-                  {powerRating.toLocaleString()} PTS
+                  {powerRating.toLocaleString()} GS
                 </span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-purple-500 via-indigo-400 to-cyan-400 rounded-full"
-                  style={{ width: '84%' }}
+                  style={{ width: '92%' }}
                 />
               </div>
             </div>
 
-            {/* Castle Siege Schedule Quick Flag */}
+            {/* Invasiones Schedule Flag */}
             <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-1">
-              <span>Castle Siege:</span>
-              <span className="text-amber-400 font-bold">Domingos 20:00 (GMT-5)</span>
+              <span>Invasiones Clave:</span>
+              <span className="text-emerald-400 font-bold">14:00 · 19:00 · 23:00 (CLT)</span>
             </div>
           </div>
         </div>

@@ -53,7 +53,6 @@ export const GuildLeaguesView: React.FC<GuildLeaguesViewProps> = ({
   onInspectEquipment,
   isOfficer,
 }) => {
-  const [activeMainTab, setActiveMainTab] = useState<'leagues' | 'all_gs'>('leagues');
   const [selectedSeasonKey, setSelectedSeasonKey] = useState<string>('');
   const [selectedLeagueType, setSelectedLeagueType] = useState<number>(1);
   const [selectedGuildName, setSelectedGuildName] = useState<string>('');
@@ -208,38 +207,6 @@ export const GuildLeaguesView: React.FC<GuildLeaguesViewProps> = ({
     });
   }, [enrichedRoster, memberSearch, filterClass]);
 
-  // Global GS rankings state
-  const [gsSearch, setGsSearch] = useState('');
-  const [gsGuildFilter, setGsGuildFilter] = useState('ALL');
-  const [gsPage, setGsPage] = useState(1);
-  const GS_PAGE_SIZE = 50;
-
-  const allGuildsInGS = useMemo(() => {
-    const set = new Set<string>();
-    gearScoreRanking.forEach((i) => {
-      if (i.Guild) set.add(i.Guild);
-    });
-    return Array.from(set).sort();
-  }, [gearScoreRanking]);
-
-  const allFilteredGS = useMemo(() => {
-    return gearScoreRanking
-      .map((item, idx) => ({ ...item, rank: idx + 1 }))
-      .filter((item) => {
-        const matchName = item.Name.toLowerCase().includes(gsSearch.toLowerCase());
-        const matchGuild = gsGuildFilter === 'ALL' || item.Guild === gsGuildFilter;
-        return matchName && matchGuild;
-      });
-  }, [gearScoreRanking, gsSearch, gsGuildFilter]);
-
-  const totalGsPages = Math.max(1, Math.ceil(allFilteredGS.length / GS_PAGE_SIZE));
-  const currentGsPage = Math.min(gsPage, totalGsPages);
-
-  const paginatedGearScoreRanking = useMemo(() => {
-    const start = (currentGsPage - 1) * GS_PAGE_SIZE;
-    return allFilteredGS.slice(start, start + GS_PAGE_SIZE);
-  }, [allFilteredGS, currentGsPage]);
-
   // Anomaly members in 5000 GS ranking
   const anomalyGsMembers = useMemo(() => {
     return gearScoreRanking.filter(
@@ -277,36 +244,8 @@ export const GuildLeaguesView: React.FC<GuildLeaguesViewProps> = ({
         )}
       </div>
 
-      {/* Main Navigation Mode */}
-      <div className="flex items-center space-x-2 border-b border-slate-800 pb-2">
-        <button
-          onClick={() => setActiveMainTab('leagues')}
-          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center space-x-1.5 ${
-            activeMainTab === 'leagues'
-              ? 'bg-purple-600 text-white shadow-sm'
-              : 'text-slate-400 hover:text-white bg-[#0c101d]'
-          }`}
-        >
-          <Layers className="w-4 h-4 text-purple-300" />
-          <span>Ligas por Temporada &amp; División</span>
-        </button>
-
-        <button
-          onClick={() => setActiveMainTab('all_gs')}
-          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center space-x-1.5 ${
-            activeMainTab === 'all_gs'
-              ? 'bg-purple-600 text-white shadow-sm'
-              : 'text-slate-400 hover:text-white bg-[#0c101d]'
-          }`}
-        >
-          <Zap className="w-4 h-4 text-yellow-400" />
-          <span>Ranking GearScore Global (Top 5,000)</span>
-        </button>
-      </div>
-
-      {/* VIEW A: LEAGUES ORGANIZED BY SEASON AND DIVISION */}
-      {activeMainTab === 'leagues' && (
-        <div className="space-y-5">
+      {/* VISTA OFICIAL: LIGAS POR TEMPORADA Y DIVISIÓN */}
+      <div className="space-y-5">
           {/* 1. SELECTOR DE TEMPORADAS (ORDENADO, SIN DUPLICADOS) */}
           <div className="bg-[#0c101d] p-4 rounded-xl border border-slate-800/80 space-y-2.5 shadow-md">
             <div className="flex items-center justify-between">
@@ -780,141 +719,8 @@ export const GuildLeaguesView: React.FC<GuildLeaguesViewProps> = ({
                 <div className="p-8 text-center text-slate-500">Selecciona una guild para ver su nómina.</div>
               )}
             </div>
-          </div>
         </div>
-      )}
-
-      {/* VIEW B: ALL GEARSCORE RANKING (5,000 PLAYERS) */}
-      {activeMainTab === 'all_gs' && (
-        <div className="bg-[#0c101d] rounded-2xl p-5 border border-slate-800 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-            <div>
-              <h3 className="text-base font-bold text-white flex items-center space-x-2">
-                <Zap className="w-4 h-4 text-yellow-400" />
-                <span>Ranking GearScore Global del Servidor Smash</span>
-              </h3>
-              <p className="text-xs text-slate-400">
-                Total registrado: {gearScoreRanking.length.toLocaleString()} jugadores cargados de la API de Smash MU.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                <input
-                  type="text"
-                  value={gsSearch}
-                  onChange={(e) => setGsSearch(e.target.value)}
-                  placeholder="Buscar jugador..."
-                  className="bg-[#080b15] border border-slate-700 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500 w-44 sm:w-56"
-                />
-              </div>
-
-              <select
-                value={gsGuildFilter}
-                onChange={(e) => setGsGuildFilter(e.target.value)}
-                className="bg-[#080b15] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none max-w-[160px]"
-              >
-                <option value="ALL">Todas las Guilds</option>
-                {allGuildsInGS.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto border border-slate-800 rounded-xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#080b15] border-b border-slate-800 text-slate-400 font-semibold">
-                <tr>
-                  <th className="p-3">Rank #</th>
-                  <th className="p-3">Personaje</th>
-                  <th className="p-3">Clase</th>
-                  <th className="p-3">Guild</th>
-                  <th className="p-3 text-right">GearScore (GS)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                {paginatedGearScoreRanking.map((item: any) => {
-                  const classInfo = decodeMuClass(item.Class);
-                  const isAnomaly = item.Guild && item.Guild.toLowerCase() === anomalyGuildName.toLowerCase();
-
-                  return (
-                    <tr
-                      key={item.Name}
-                      className={`virtual-row hover:bg-slate-800/30 transition-colors ${
-                        isAnomaly ? 'bg-purple-950/30' : ''
-                      }`}
-                    >
-                      <td className="p-3 font-mono font-bold text-slate-400">#{item.rank}</td>
-                      <td className="p-3 font-bold text-white flex items-center space-x-1.5">
-                        <button
-                          onClick={() => onInspectEquipment?.(item.Name)}
-                          className="hover:text-purple-300 hover:underline text-left transition-colors"
-                          title="Clic para ver equipamiento e ítems"
-                        >
-                          {item.Name}
-                        </button>
-                        {isAnomaly && (
-                          <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-purple-900 text-purple-200">
-                            ANOMALY
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${classInfo.colorClass}`}>
-                          {classInfo.name} ({classInfo.code})
-                        </span>
-                      </td>
-                      <td className="p-3 text-slate-300 font-semibold">{item.Guild || '—'}</td>
-                      <td className="p-3 font-mono font-black text-amber-400 tabular-nums text-right">
-                        {item.GearScore.toLocaleString()} GS
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* GS Pagination Controls */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-slate-400">
-            <div>
-              Mostrando del{' '}
-              <span className="font-bold text-white">
-                {((currentGsPage - 1) * GS_PAGE_SIZE + 1).toLocaleString()}
-              </span>{' '}
-              al{' '}
-              <span className="font-bold text-white">
-                {Math.min(currentGsPage * GS_PAGE_SIZE, allFilteredGS.length).toLocaleString()}
-              </span>{' '}
-              de <span className="font-bold text-purple-400">{allFilteredGS.length.toLocaleString()}</span> personajes
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setGsPage((p) => Math.max(1, p - 1))}
-                disabled={currentGsPage <= 1}
-                className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 transition-colors"
-              >
-                Anterior
-              </button>
-              <span className="px-3 py-1 rounded-lg bg-[#080b15] border border-slate-800 font-mono text-purple-300">
-                Pág. {currentGsPage} de {totalGsPages}
-              </span>
-              <button
-                onClick={() => setGsPage((p) => Math.min(totalGsPages, p + 1))}
-                disabled={currentGsPage >= totalGsPages}
-                className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 transition-colors"
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 };

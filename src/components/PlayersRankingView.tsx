@@ -48,10 +48,21 @@ export const PlayersRankingView: React.FC<PlayersRankingViewProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [isOnlyMyGuild, setIsOnlyMyGuild] = useState(false);
 
-  // Selected character for the right-hand persistent 3D inspector
-  const [selectedCharName, setSelectedCharName] = useState<string>('SkyTM');
+  // Selected character for the right-hand persistent 3D inspector (Top 1 por defecto)
+  const [selectedCharName, setSelectedCharName] = useState<string>(
+    () => gearScoreRanking[0]?.Name || 'BIGLORD'
+  );
   const [selectedProfile, setSelectedProfile] = useState<SmashMUCharacterProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // Auto-seleccionar al #1 del ranking oficial cuando se cargan los datos
+  useEffect(() => {
+    if (gearScoreRanking && gearScoreRanking.length > 0) {
+      if (!selectedCharName || selectedCharName === 'SkyTM') {
+        setSelectedCharName(gearScoreRanking[0].Name);
+      }
+    }
+  }, [gearScoreRanking]);
 
   // Load selected character profile for 3D preview
   useEffect(() => {

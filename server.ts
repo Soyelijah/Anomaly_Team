@@ -2922,6 +2922,305 @@ app.get('/api/auth/registered-members', (_req, res) => {
   }
 });
 
+// ============================================================================
+// SISTEMA DE SUMINISTROS DEL CLAN (BANDEJA DE GESTIÓN PARA EL GUILD MASTER)
+// ============================================================================
+const SUPPLY_REQUESTS_FILE = path.resolve(__dirname, 'data', 'supply_requests.json');
+
+interface ClanSupplyRequest {
+  id: string;
+  characterName: string;
+  supplyType: string;
+  quantity: string;
+  urgency: 'normal' | 'media' | 'alta';
+  notes: string;
+  status: 'pendiente' | 'aprobado' | 'entregado' | 'rechazado';
+  createdAt: string;
+  updatedAt: string;
+  adminNotes?: string;
+  reviewedBy?: string;
+}
+
+function getSupplyRequests(): ClanSupplyRequest[] {
+  try {
+    if (!fs.existsSync(SUPPLY_REQUESTS_FILE)) {
+      return [];
+    }
+    const raw = fs.readFileSync(SUPPLY_REQUESTS_FILE, 'utf-8');
+    return JSON.parse(raw);
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveSupplyRequests(list: ClanSupplyRequest[]) {
+  try {
+    fs.mkdirSync(path.dirname(SUPPLY_REQUESTS_FILE), { recursive: true });
+    fs.writeFileSync(SUPPLY_REQUESTS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('Error saving supply requests:', e);
+  }
+}
+
+// Obtener solicitudes de suministros (con filtro opcional por personaje)
+app.get('/api/clan/supply-requests', (req, res) => {
+  try {
+    const { characterName } = req.query;
+    let list = getSupplyRequests();
+    if (characterName) {
+      const clean = String(characterName).toLowerCase();
+      list = list.filter((r) => r.characterName.toLowerCase() === clean);
+    }
+    // Ordenar más recientes primero
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    res.json({ success: true, count: list.length, requests: list });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Crear nueva solicitud de suministros (Miembro)
+app.post('/api/clan/supply-requests', (req, res) => {
+  try {
+    const { characterName, supplyType, quantity, urgency, notes } = req.body;
+    if (!characterName || !supplyType || !quantity) {
+      return res.status(400).json({
+        success: false,
+        error: 'Debes especificar el personaje, tipo de suministro y cantidad requerida.',
+      });
+    }
+
+    const list = getSupplyRequests();
+    const now = new Date().toISOString();
+    const newRequest: ClanSupplyRequest = {
+      id: `req-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      characterName: String(characterName).trim(),
+      supplyType: String(supplyType).trim(),
+      quantity: String(quantity).trim(),
+      urgency: urgency === 'alta' ? 'alta' : urgency === 'media' ? 'media' : 'normal',
+      notes: notes ? String(notes).trim() : '',
+      status: 'pendiente',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    list.unshift(newRequest);
+    saveSupplyRequests(list);
+
+    // Notificar al Webhook de Discord si existe
+    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    if (webhookUrl) {
+      fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: '📦 Nueva Solicitud de Suministros · Clan ANOMALY',
+              description: `El integrante **${newRequest.characterName}** ha solicitado suministros al Guild Master (UlmerMG).`,
+              color: newRequest.urgency === 'alta' ? 0xef4444 : 0xf59e0b,
+              fields: [
+                { name: '👤 Guerrero', value: newRequest.characterName, inline: true },
+                { name: '⚔️ Suministro', value: newRequest.supplyType, inline: true },
+                { name: '📊 Cantidad', value: newRequest.quantity, inline: true },
+                { name: '⚠️ Urgencia', value: newRequest.urgency.toUpperCase(), inline: true },
+                { name: '📝 Motivo / Notas', value: newRequest.notes || 'Sin notas adicionales', inline: false },
+              ],
+              footer: { text: 'Bandeja de Intendencia · Clan Anomaly Smash MU' },
+              timestamp: now,
+            },
+          ],
+        }),
+      }).catch((e) => console.warn('Webhook supply notify error:', e.message));
+    }
+
+    res.json({ success: true, request: newRequest });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Actualizar estado de solicitud (Guild Master / Oficial)
+app.put('/api/clan/supply-requests/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNotes, reviewerName } = req.body;
+    const list = getSupplyRequests();
+    const item = list.find((r) => r.id === id);
+
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Solicitud no encontrada.' });
+    }
+
+    if (status) item.status = status;
+    if (adminNotes !== undefined) item.adminNotes = adminNotes;
+    if (reviewerName) item.reviewedBy = reviewerName;
+    item.updatedAt = new Date().toISOString();
+
+    saveSupplyRequests(list);
+    res.json({ success: true, request: item });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// SISTEMA DE ASISTENCIA A INVASIONES DIARIAS (14:00, 19:00, 23:00 HORA CHILENA)
+// ============================================================================
+const INVASIONS_FILE = path.resolve(__dirname, 'data', 'invasion_attendance.json');
+
+interface InvasionAttendanceRecord {
+  id: string;
+  characterName: string;
+  date: string; // YYYY-MM-DD
+  invasionSlot: '14:00' | '19:00' | '23:00';
+  checkInTime?: string;
+  checkOutTime?: string;
+  userTimeZone: string;
+  status: 'completado' | 'en_progreso';
+  updatedAt: string;
+}
+
+function getInvasionAttendance(): InvasionAttendanceRecord[] {
+  try {
+    if (!fs.existsSync(INVASIONS_FILE)) {
+      return [];
+    }
+    const raw = fs.readFileSync(INVASIONS_FILE, 'utf-8');
+    return JSON.parse(raw);
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveInvasionAttendance(list: InvasionAttendanceRecord[]) {
+  try {
+    fs.mkdirSync(path.dirname(INVASIONS_FILE), { recursive: true });
+    fs.writeFileSync(INVASIONS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('Error saving invasion attendance:', e);
+  }
+}
+
+// Obtener asistencias a invasiones
+app.get('/api/clan/invasion-attendance', (req, res) => {
+  try {
+    const { characterName, date } = req.query;
+    let list = getInvasionAttendance();
+    if (characterName) {
+      const clean = String(characterName).toLowerCase();
+      list = list.filter((r) => r.characterName.toLowerCase() === clean);
+    }
+    if (date) {
+      list = list.filter((r) => r.date === String(date));
+    }
+    res.json({ success: true, records: list });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Registrar Check-in (Entrada) o Check-out (Salida) de Invasión
+app.post('/api/clan/invasion-attendance/check', (req, res) => {
+  try {
+    const { characterName, invasionSlot, checkType, userTimeZone, localTimeStr } = req.body;
+    if (!characterName || !invasionSlot || !checkType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Faltan parámetros: characterName, invasionSlot, checkType.',
+      });
+    }
+
+    // Fecha en hora chilena (America/Santiago)
+    const now = new Date();
+    const chileDateStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(now);
+
+    const list = getInvasionAttendance();
+    const cleanChar = String(characterName).trim();
+    const slot = invasionSlot as '14:00' | '19:00' | '23:00';
+
+    let record = list.find(
+      (r) =>
+        r.characterName.toLowerCase() === cleanChar.toLowerCase() &&
+        r.date === chileDateStr &&
+        r.invasionSlot === slot
+    );
+
+    const nowIso = now.toISOString();
+
+    if (!record) {
+      record = {
+        id: `inv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        characterName: cleanChar,
+        date: chileDateStr,
+        invasionSlot: slot,
+        userTimeZone: userTimeZone || 'America/Santiago',
+        status: checkType === 'check_out' ? 'completado' : 'en_progreso',
+        updatedAt: nowIso,
+      };
+      if (checkType === 'check_in') {
+        record.checkInTime = localTimeStr || nowIso;
+      } else {
+        record.checkOutTime = localTimeStr || nowIso;
+      }
+      list.push(record);
+    } else {
+      if (checkType === 'check_in') {
+        record.checkInTime = localTimeStr || nowIso;
+      } else if (checkType === 'check_out') {
+        record.checkOutTime = localTimeStr || nowIso;
+        record.status = 'completado';
+      }
+      record.updatedAt = nowIso;
+    }
+
+    saveInvasionAttendance(list);
+
+    // Discord Webhook broadcast
+    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    if (webhookUrl) {
+      fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title:
+                checkType === 'check_in'
+                  ? '⚔️ Asistencia Invasión: ENTRADA Registrada'
+                  : '✅ Asistencia Invasión: SALIDA Completada',
+              description: `El guerrero **${cleanChar}** ha marcado su ${
+                checkType === 'check_in' ? 'entrada' : 'salida'
+              } en la invasión de las **${slot} hrs (Hora Chile)**.`,
+              color: checkType === 'check_in' ? 0x06b6d4 : 0x10b981,
+              fields: [
+                { name: '👤 Personaje', value: cleanChar, inline: true },
+                { name: '⏰ Turno Invasión', value: `${slot} CLT`, inline: true },
+                {
+                  name: '🌍 Hora Local Registrada',
+                  value: `${localTimeStr || 'N/A'} (${userTimeZone || 'Local'})`,
+                  inline: false,
+                },
+              ],
+              footer: { text: 'Control de Asistencias · Clan Anomaly Smash MU' },
+              timestamp: nowIso,
+            },
+          ],
+        }),
+      }).catch((e) => console.warn('Invasion webhook broadcast notice:', e.message));
+    }
+
+    res.json({ success: true, record });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 async function start() {
   const isProd = process.env.NODE_ENV === 'production';
 

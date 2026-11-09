@@ -196,7 +196,6 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
             <input
               type="text"
               required
-              placeholder="Ej: Anomaly_Warrior"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white"
@@ -260,7 +259,6 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
             <label className="block text-slate-400 mb-1 font-semibold">Nota Interna</label>
             <input
               type="text"
-              placeholder="Ej: Nuevo ingreso, asignado a Party 2"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white"
@@ -346,7 +344,6 @@ export const AddVaultAccountModal: React.FC<AddVaultAccountModalProps> = ({ isOp
             <input
               type="text"
               required
-              placeholder="Ej: Buffer Elf #2 (Noria)"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white"
@@ -359,7 +356,6 @@ export const AddVaultAccountModal: React.FC<AddVaultAccountModalProps> = ({ isOp
               <input
                 type="text"
                 required
-                placeholder="Ej: Aura_Free"
                 value={characterName}
                 onChange={(e) => setCharacterName(e.target.value)}
                 className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white"
@@ -411,7 +407,6 @@ export const AddVaultAccountModal: React.FC<AddVaultAccountModalProps> = ({ isOp
             <label className="block text-slate-400 mb-1">Propósito &amp; Instrucciones</label>
             <input
               type="text"
-              placeholder="Ej: Para miembros que necesiten buff de ataque en Devias 3"
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
               className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white"
@@ -422,7 +417,6 @@ export const AddVaultAccountModal: React.FC<AddVaultAccountModalProps> = ({ isOp
             <label className="block text-slate-400 mb-1">Inventario / Suministros</label>
             <input
               type="text"
-              placeholder="Ej: Set Wind +11, 200 Pociones de Maná"
               value={inventorySummary}
               onChange={(e) => setInventorySummary(e.target.value)}
               className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white"
@@ -433,7 +427,6 @@ export const AddVaultAccountModal: React.FC<AddVaultAccountModalProps> = ({ isOp
             <label className="block text-slate-400 mb-1">Indicación de Acceso / Pista Clave</label>
             <input
               type="text"
-              placeholder="Ej: Pedir clave en Discord canal #cuentas"
               value={accessCodeHint}
               onChange={(e) => setAccessCodeHint(e.target.value)}
               className="w-full bg-[#080b15] border border-slate-700 rounded-lg p-2.5 text-white"
