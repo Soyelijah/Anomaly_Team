@@ -315,6 +315,7 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
   >('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createAuctionError, setCreateAuctionError] = useState<string | null>(null);
   const [sellingModalItem, setSellingModalItem] = useState<AuctionItem | null>(null);
   const [sellFinalPrice, setSellFinalPrice] = useState<number>(100);
   const [sellWinnerName, setSellWinnerName] = useState<string>('');
@@ -353,7 +354,7 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
     fetch('/api/discord/webhook-info')
       .then((res) => res.json())
       .then((data) => {
-        if (data && data.success) {
+        if (data && data.success && data.connected === true) {
           setDiscordInfo({
             connected: true,
             channelName: data.channelName,
@@ -1293,6 +1294,7 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
   const handleCreateAuction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim()) return;
+    setCreateAuctionError(null);
 
     const cleanName = cleanMuItemName(newItemName) || newItemName.trim();
     const catalogMatch = getSmashMuItemByName(cleanName);
@@ -1356,6 +1358,10 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
         body: JSON.stringify(newAuction),
       });
       const data = await res.json();
+      if (!res.ok || !data?.success) {
+        setCreateAuctionError(data?.error || 'No se pudo publicar la subasta. Inténtalo nuevamente.');
+        return;
+      }
       if (data && data.success && data.item) {
         const finalItem = data.item;
         const updated = [finalItem, ...auctions.filter((a) => a.id !== finalItem.id)];
@@ -1371,16 +1377,11 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
         return;
       }
     } catch (err) {
-      console.warn('Backend auction creation failed, saving locally:', err);
+      console.warn('Backend auction creation failed:', err);
+      setCreateAuctionError('No se pudo contactar al servidor. La subasta no se publicó.');
+      return;
     }
-
-    const updated = [newAuction, ...auctions];
-    setAuctions(updated);
-    localStorage.setItem('anomaly_auctions', JSON.stringify(updated));
-
-    setIsCreateModalOpen(false);
-    setBidSuccessMessage('¡Ítem publicado con éxito con su ficha profesional oficial!');
-    setTimeout(() => setBidSuccessMessage(null), 3000);
+    setCreateAuctionError('El servidor no confirmó la publicación. Inténtalo nuevamente.');
   };
 
   // Preview object for the live form
@@ -1468,7 +1469,7 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
               <div className="inline-flex items-center space-x-1.5 text-xs font-semibold text-indigo-300 bg-indigo-950/80 border border-indigo-500/50 px-3 py-0.5 rounded-full shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Discord Conectado (#{discordInfo.channelName || 'Subastas'})</span>
+                <span>Webhook disponible (#{discordInfo.channelName || 'Subastas'})</span>
               </div>
             ) : (
               <div className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-400 bg-slate-900 border border-slate-700/60 px-3 py-0.5 rounded-full">
@@ -1620,7 +1621,7 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
                       </span>
                     ) : item.es_subasta ? (
                       <span className="inline-flex items-center space-x-1 text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
-                        <span>Web</span>
+                        <span>Discord pendiente</span>
                       </span>
                     ) : null}
                   </div>
@@ -2638,6 +2639,11 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
                   </label>
                 </div>
 
+                {createAuctionError && (
+                  <p role="alert" className="rounded-lg border border-red-500/60 bg-red-950/60 px-3 py-2 text-red-200">
+                    {createAuctionError}
+                  </p>
+                )}
                 {/* Submit Buttons */}
                 <div className="flex items-center space-x-3 pt-3">
                   <button

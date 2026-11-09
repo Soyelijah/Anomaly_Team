@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -1584,7 +1585,7 @@ app.get('/assets/mu-original/*', async (req, res) => {
 
 const DISCORD_AUCTION_WEBHOOK_URL =
   process.env.DISCORD_AUCTION_WEBHOOK_URL ||
-  'https://discord.com/api/webhooks/1565172973394993252/xZ98xbrolilhsbIzckh_jgFl-n7Vn5U7h_XGDZXNJu02S9hhCoGf-bxF6-PIKv-irzWj';
+  '';
 
 const AUCTIONS_DB_PATH = path.join(__dirname, 'data', 'auctions_db.json');
 
@@ -2114,11 +2115,11 @@ async function alPublicarProductoEnWeb(producto: any): Promise<any> {
 
   const payload = buildDiscordAuctionEmbed(producto, 'publicada');
   const result = await enviarMensajeDiscordConAdjunto(payload, producto);
-
-  if (result.success && result.id) {
-    producto.discord_message_id = result.id;
-    console.log(`Subasta enviada. ID de Discord guardado: ${result.id}`);
+  if (!result.success || !result.id) {
+    throw new Error('Discord no confirmó la publicación. La subasta no se guardó.');
   }
+  producto.discord_message_id = result.id;
+  console.log(`Subasta enviada. ID de Discord guardado: ${result.id}`);
 
   producto.estado = 'Activo';
   producto.status = 'active';
@@ -2277,7 +2278,7 @@ app.post('/api/auctions', async (req, res) => {
     res.json({ success: true, item: saved });
   } catch (err: any) {
     console.error('Error creating auction:', err.message);
-    res.status(500).json({ success: false, error: err.message });
+    res.status(err.message.startsWith('Discord no confirmó') ? 503 : 500).json({ success: false, error: err.message });
   }
 });
 
@@ -2491,15 +2492,14 @@ interface DiscordVerificationRecord {
 }
 const discordVerificationCodes = new Map<string, DiscordVerificationRecord>();
 
-const CLAN_DISCORD_WEBHOOK =
-  'https://discord.com/api/webhooks/1569192451216904242/3mAdQcgHwaQ6m-FR_ItvHH6_qZMPakicWcSV9WOwa2UJ6gMMDTprQV6y7iQVVk3W_0fP';
+const CLAN_DISCORD_WEBHOOK = process.env.DISCORD_VERIFICATION_WEBHOOK_URL || '';
 
 async function broadcastDiscordVerificationCode(record: DiscordVerificationRecord) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL || CLAN_DISCORD_WEBHOOK;
-  if (!webhookUrl) return;
+  const webhookUrl = CLAN_DISCORD_WEBHOOK;
+  if (!webhookUrl) return false;
   try {
     const isAnomaly = (record.guild || '').toLowerCase() === 'anomaly';
-    await fetch(webhookUrl, {
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2520,8 +2520,14 @@ async function broadcastDiscordVerificationCode(record: DiscordVerificationRecor
         ],
       }),
     });
+    if (!response.ok) {
+      console.warn('[DISCORD WEBHOOK] Verification HTTP status:', response.status);
+      return false;
+    }
+    return true;
   } catch (err: any) {
     console.warn('[DISCORD WEBHOOK] Failed to send webhook:', err.message);
+    return false;
   }
 }
 
@@ -2668,11 +2674,12 @@ app.post('/api/auth/discord-code', async (req, res) => {
       expiresAt,
     };
 
+    // Enviar al webhook de Discord antes de activar el código.
+    if (!(await broadcastDiscordVerificationCode(record))) {
+      return res.status(503).json({ success: false, error: 'No se pudo enviar el código a Discord. Inténtalo nuevamente.' });
+    }
     discordVerificationCodes.set(verifiedCharName.toLowerCase(), record);
     discordVerificationCodes.set(cleanLogin.toLowerCase(), record);
-
-    // Enviar al webhook de Discord (canal #verificación) si está configurado
-    broadcastDiscordVerificationCode(record);
 
     const isAnomaly = (verifiedGuild || '').toLowerCase() === 'anomaly';
 
@@ -2939,7 +2946,7 @@ app.get('/api/auth/registered-members', (_req, res) => {
 const SUPPLY_REQUESTS_FILE = path.resolve(__dirname, 'data', 'supply_requests.json');
 const DISCORD_SUPPLIES_WEBHOOK_URL =
   process.env.DISCORD_SUPPLIES_WEBHOOK_URL ||
-  'https://discord.com/api/webhooks/1569199056213901482/MHZdJrapUkOZggj1u30_Nr0cJXJKxXqlPf2QEvC9nygleobnEZfQ_dpIrXRAvm2bx4TS';
+  '';
 
 interface ClanSupplyRequest {
   id: string;
@@ -3349,7 +3356,7 @@ app.post('/api/clan/invasion-attendance/check', (req, res) => {
     // Webhook dedicado al Canal de Asistencias de Discord (#asistencias)
     const ATTENDANCE_WEBHOOK_URL =
       process.env.DISCORD_ATTENDANCE_WEBHOOK_URL ||
-      'https://discord.com/api/webhooks/1569192451216904242/3mAdQcgHwaQ6m-FR_ItvHH6_qZMPakicWcSV9WOwa2UJ6gMMDTprQV6y7iQVVk3W_0fP';
+      '';
 
     if (ATTENDANCE_WEBHOOK_URL) {
       const isCheckIn = checkType === 'check_in';
@@ -3426,7 +3433,7 @@ app.post('/api/clan/invasion-attendance/review', (req, res) => {
     // Si fue rechazado por fraude, notificar en Discord para que todo el clan mantenga disciplina
     const ATTENDANCE_WEBHOOK_URL =
       process.env.DISCORD_ATTENDANCE_WEBHOOK_URL ||
-      'https://discord.com/api/webhooks/1569192451216904242/3mAdQcgHwaQ6m-FR_ItvHH6_qZMPakicWcSV9WOwa2UJ6gMMDTprQV6y7iQVVk3W_0fP';
+      '';
 
     if (ATTENDANCE_WEBHOOK_URL && decision === 'rechazar') {
       fetch(ATTENDANCE_WEBHOOK_URL, {
@@ -3473,7 +3480,7 @@ app.post('/api/clan/siege-attendance', (req, res) => {
 
     const ATTENDANCE_WEBHOOK_URL =
       process.env.DISCORD_ATTENDANCE_WEBHOOK_URL ||
-      'https://discord.com/api/webhooks/1569192451216904242/3mAdQcgHwaQ6m-FR_ItvHH6_qZMPakicWcSV9WOwa2UJ6gMMDTprQV6y7iQVVk3W_0fP';
+      '';
 
     if (ATTENDANCE_WEBHOOK_URL) {
       fetch(ATTENDANCE_WEBHOOK_URL, {
