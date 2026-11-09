@@ -1,19 +1,199 @@
 [
   {
-    "id": "mem-1794112960388",
-    "muLoginId": "ulmer_leader",
+    "id": "mem-ulmermg",
+    "muLoginId": "UlmerMG",
     "characterName": "UlmerMG",
     "password": "admin",
     "role": "officer",
     "registeredAt": "2026-11-08T04:42:40.387Z",
     "lastLogin": "2026-11-08T04:42:40.387Z",
     "syncedData": {
-      "level": 37,
-      "resets": 196,
+      "level": 393,
+      "resets": 208,
       "gearScore": 851,
       "className": "Magic Gladiator",
       "guild": "Anomaly",
       "isMaster": true,
+      "equippedCount": 9
+    }
+  },
+  {
+    "id": "mem-ulmerdl",
+    "muLoginId": "UlmerDL",
+    "characterName": "UlmerDL",
+    "password": "1234",
+    "role": "officer",
+    "registeredAt": "2026-11-08T04:42:40.387Z",
+    "lastLogin": "2026-11-08T04:42:40.387Z",
+    "syncedData": {
+      "level": 245,
+      "resets": 244,
+      "gearScore": 1012,
+      "className": "Lord Emperor",
+      "guild": "Anomaly",
+      "isMaster": false,
+      "equippedCount": 9
+    }
+  },
+  {
+    "id": "mem-matonsito",
+    "muLoginId": "MATONSITO",
+    "characterName": "MATONSITO",
+    "password": "1234",
+    "role": "member",
+    "registeredAt": "2026-11-08T04:42:40.387Z",
+    "lastLogin": "2026-11-08T04:42:40.387Z",
+    "syncedData": {
+      "level": 400,
+      "resets": 244,
+      "gearScore": 1487,
+      "className": "Grand Master",
+      "guild": "Anomaly",
+      "isMaster": false,
+      "equippedCount": 9
+    }
+  },
+  {
+    "id": "mem-skytm",
+    "muLoginId": "SkyTM",
+    "characterName": "SkyTM",
+    "password": "1234",
+    "role": "member",
+    "registeredAt": "2026-11-08T04:42:40.387Z",
+    "lastLogin": "2026-11-08T04:42:40.387Z",
+    "syncedData": {
+      "level": 365,
+      "resets": 244,
+      "gearScore": 1417,
+      "className": "Grand Master",
+      "guild": "Anomaly",
+      "isMaster": false,
+      "equippedCount": 9
+    }
+  },
+  {
+    "id": "mem-saviogm",
+    "muLoginId": "SavioGM",
+    "characterName": "SavioGM",
+    "password": "1234",
+    "role": "member",
+    "registeredAt": "2026-11-08T04:42:40.387Z",
+    "lastLogin": "2026-11-08T04:42:40.387Z",
+    "syncedData": {
+      "level": 400,
+      "resets": 244,
+      "gearScore": 1390,
+      "className": "Grand Master",
+      "guild": "Anomaly",
+      "isMaster": false,
+      "equippedCount": 9
+    }
+  },
+  {
+    "id": "mem-matthew",
+    "muLoginId": "Matthew",
+    "characterName": "Matthew",
+    "password": "1234",
+    "role": "member",
+    "registeredAt": "2026-11-08T04:42:40.387Z",
+    "lastLogin": "2026-11-08T04:42:40.387Z",
+    "syncedData": {
+      "level": 400,
+      "resets": 244,
+      "gearScore": 1340,
+      "className": "Grand Master",
+      "guild": "Anomaly",
+      "isMaster": false,
+      "equippedCount": 9
+    }
+  },
+  {
+    "id": "mem-pocajontas",
+    "muLoginId": "Pocajontas",
+    "characterName": "Pocajontas",
+    "password": "1234",
+    "role": "member",
+    "registeredAt": "2026-11-08T04:42:40.387Z",
+    "lastLogin": "2026-11-08T04:42:40.387Z",
+    "syncedData": {
+      "level": 400,
+      "resets": 244,
+      "gearScore": 1310,
+      "className": "High Elf",
+      "guild": "Anomaly",
+      "isMaster": false,
+      "equippedCount": 9
+    }
+  },
+  {
+    "id": "mem-prinmestis",
+    "muLoginId": "prinmestis",
+    "characterName": "prinmestis",
+    "password": "1234",
+    "role": "member",
+    "registeredAt": "2026-11-08T04:42:40.387Z",
+    "lastLogin": "2026-11-08T04:42:40.387Z",
+    "syncedData": {
+      "level": 400,
+      "resets": 244,
+      "gearScore": 1265,
+      "className": "Grand Master",
+      "guild": "Anomaly",
+      "isMaster": false,
+      "equippedCount": 9
+    }
+  },
+  {
+    "id": "mem-cass",
+    "muLoginId": "CasS",
+    "characterName": "CasS",
+    "password": "1234",
+    "role": "member",
+    "registeredAt": "2026-11-08T04:42:40.387Z",
+    "lastLogin": "2026-11-08T04:42:40.387Z",
+    "syncedData": {
+      "level": 400,
+      "resets": 174,
+      "gearScore": 1255,
+      "className": "Fist Master",
+      "guild": "Anomaly",
+      "isMaster": false,
+      "equippedCount": 9
+    }
+  },
+  {
+    "id": "mem-yhambo",
+    "muLoginId": "Yhambo",
+    "characterName": "Yhambo",
+    "password": "1234",
+    "role": "member",
+    "registeredAt": "2026-11-08T04:42:40.387Z",
+    "lastLogin": "2026-11-08T04:42:40.387Z",
+    "syncedData": {
+      "level": 400,
+      "resets": 244,
+      "gearScore": 1220,
+      "className": "Grand Master",
+      "guild": "Anomaly",
+      "isMaster": false,
+      "equippedCount": 9
+    }
+  },
+  {
+    "id": "mem-rusbelx23",
+    "muLoginId": "rusbelx23",
+    "characterName": "rusbelx23",
+    "password": "1234",
+    "role": "member",
+    "registeredAt": "2026-11-08T04:42:40.387Z",
+    "lastLogin": "2026-11-08T04:42:40.387Z",
+    "syncedData": {
+      "level": 400,
+      "resets": 244,
+      "gearScore": 1210,
+      "className": "Grand Master",
+      "guild": "Anomaly",
+      "isMaster": false,
       "equippedCount": 9
     }
   }
