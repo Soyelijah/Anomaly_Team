@@ -301,8 +301,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </span>
                 )}
               </div>
-              <div className="text-[10px] text-slate-400 font-mono truncate">
-                ID MU: <span className="text-purple-300">{session.muLoginId}</span>
+              <div className="flex items-center space-x-1.5 text-[10px] text-slate-400 font-mono truncate">
+                <span>ID: <strong className="text-purple-300 font-normal">{session.muLoginId}</strong></span>
+                <span>•</span>
+                <span className={session.role === 'member' || session.role === 'officer' ? 'text-pink-400 font-bold' : 'text-cyan-400'}>
+                  {session.syncedData.guild || (session.role === 'external' ? 'Sin Clan' : 'Anomaly')}
+                </span>
               </div>
             </div>
 

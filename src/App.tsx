@@ -607,6 +607,21 @@ export default function App() {
                 <span className="px-1.5 py-0.5 rounded bg-purple-500/15 border border-purple-500/30 text-[10px] text-purple-300 font-bold shrink-0 hidden sm:inline">
                   {teamSession.syncedData.gearScore} GS
                 </span>
+                {teamSession.role === 'officer' ? (
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-[9px] text-amber-300 font-bold shrink-0">
+                    OFICIAL ANOMALY
+                  </span>
+                ) : (teamSession.syncedData?.guild?.toLowerCase() === clanConfig.name.toLowerCase() || teamSession.role === 'member') ? (
+                  <span className="px-1.5 py-0.5 rounded bg-purple-500/20 border border-purple-500/40 text-[9px] text-purple-300 font-bold shrink-0">
+                    ANOMALY
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[9px] text-cyan-300 font-medium shrink-0">
+                    {teamSession.syncedData?.guild && teamSession.syncedData.guild !== 'Sin Clan'
+                      ? teamSession.syncedData.guild
+                      : 'SIN CLAN'}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -684,6 +699,7 @@ export default function App() {
               sharedAccounts={sharedAccounts}
               currentMemberName={currentMember || officerName || 'UlmerMG'}
               isOfficer={isOfficer}
+              isAnomalyMember={Boolean(isOfficer || teamSession?.role === 'officer' || teamSession?.role === 'member' || teamSession?.syncedData?.guild?.toLowerCase() === clanConfig.name.toLowerCase())}
               onToggleStatus={handleToggleAccountStatus}
               onDeleteAccount={handleDeleteAccount}
               onOpenAddModal={() => setIsAddAccountOpen(true)}
@@ -722,6 +738,8 @@ export default function App() {
               onUpdateMyAttendance={handleMemberAttendanceUpdate}
               onInspectMyEquipment={(name) => setInspectedCharacter(name)}
               onNavigateToTab={setActiveTab}
+              session={teamSession}
+              clanConfigName={clanConfig.name}
             />
           )}
         </main>

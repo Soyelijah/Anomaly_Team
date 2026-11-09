@@ -23,6 +23,7 @@ interface VaultAccountsViewProps {
   sharedAccounts: SharedAccount[];
   currentMemberName: string;
   isOfficer: boolean;
+  isAnomalyMember?: boolean;
   onToggleStatus: (id: string) => void;
   onDeleteAccount: (id: string) => void;
   onOpenAddModal: () => void;
@@ -33,6 +34,7 @@ export const VaultAccountsView: React.FC<VaultAccountsViewProps> = ({
   sharedAccounts,
   currentMemberName,
   isOfficer,
+  isAnomalyMember = true,
   onToggleStatus,
   onDeleteAccount,
   onOpenAddModal,
@@ -73,6 +75,51 @@ export const VaultAccountsView: React.FC<VaultAccountsViewProps> = ({
         return { label: 'Cuenta Clan', color: 'bg-slate-800 text-slate-300 border-slate-700' };
     }
   };
+
+  if (!isAnomalyMember) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0c101d] rounded-2xl p-8 border border-slate-800 text-center max-w-2xl mx-auto space-y-4 shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-purple-950/50 border border-purple-500/40 text-purple-400 flex items-center justify-center mx-auto shadow-lg shadow-purple-950/50">
+            <Lock className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-white">
+            Acceso Exclusivo para Miembros de ANOMALY
+          </h2>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Esta sección contiene las credenciales de acceso a las Elfas de Buff comunitarias, Dark Lords invocadores y cuentas mulas de suministros del Clan <strong className="text-pink-400">ANOMALY</strong>.
+          </p>
+          <div className="p-4 bg-[#080b15] rounded-xl border border-slate-800/80 text-xs text-slate-400 text-left space-y-1.5">
+            <div className="text-slate-300 font-semibold">Tu cuenta actual:</div>
+            <div className="font-mono text-cyan-300">• Personaje: {currentMemberName}</div>
+            <div className="font-mono text-amber-300">• Estado: Jugador Independiente / Sin Clan</div>
+          </div>
+          <p className="text-xs text-slate-400">
+            Si deseas solicitar ingreso al team para acceder a las cuentas compartidas y apoyo en eventos, contáctanos en Discord:
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <a
+              href="https://discord.gg/VqDMBHkGGe"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-2"
+            >
+              <span>Postular al Clan en Discord</span>
+            </a>
+            {onNavigateToTab && (
+              <button
+                type="button"
+                onClick={() => onNavigateToTab('auction')}
+                className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-colors cursor-pointer"
+              >
+                <span>Ver Subasta del Baúl</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
