@@ -3,6 +3,11 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "node_modules/tesseract.js-core/*.wasm"
+    }
+  },
   "rewrites": [
     {
       "source": "/assets/mu-original/(.*)",
