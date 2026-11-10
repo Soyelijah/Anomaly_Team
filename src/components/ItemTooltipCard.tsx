@@ -387,24 +387,19 @@ export const ItemTooltipCard: React.FC<ItemTooltipCardProps> = ({
           <div className="flex items-center justify-between text-[11px] text-slate-400">
             <span>Durabilidad:</span>
             <span className="font-mono text-slate-200">
-              [{item.stats?.durability || 83} / {item.stats?.maxDurability || 68}]
+              {item.stats?.durability && item.stats?.maxDurability
+                ? `[${item.stats.durability} / ${item.stats.maxDurability}]`
+                : 'No detectada'}
             </span>
           </div>
-          <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
-            <div
-              className="h-full bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]"
-              style={{
-                width: `${Math.min(
-                  100,
-                  Math.round(
-                    ((item.stats?.durability || 83) /
-                      Math.max(1, item.stats?.maxDurability || 68)) *
-                      100
-                  )
-                )}%`,
-              }}
-            />
-          </div>
+          {item.stats?.durability && item.stats?.maxDurability ? (
+            <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
+              <div
+                className="h-full bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+                style={{ width: `${Math.min(100, Math.round(item.stats.durability / item.stats.maxDurability * 100))}%` }}
+              />
+            </div>
+          ) : null}
         </div>
 
         {/* Requirements (Strength / Agility) */}

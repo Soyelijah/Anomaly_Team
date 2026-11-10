@@ -2,8 +2,10 @@ import express from 'express';
 import type { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { createWorker } from 'tesseract.js';
 import { cleanMuItemName, getItemSprite } from '../src/utils/itemSprites.ts';
 import { getSmashMuItemByName, getSmashMuImageUrl, searchMuItems, SMASHMU_ITEM_CATALOG } from '../src/utils/muItemsDatabase.ts';
+import { prepareSmallPngForOcr, parseMuItemFromOcrText } from '../src/utils/parseMuItemFromOcrText.ts';
 import { createBlobAuctionStorage, mutateAuctions } from './auctionStore.ts';
 
 const app = express();
@@ -794,172 +796,35 @@ router.get('/profile/:name', async (req, res) => {
   }
 });
 
-// Item parser for Vercel Serverless
-function parseVercelItemText(text: string) {
-  const result: any = {
-    tag: '[EXC]',
-    itemName: 'Dragon Armor',
-    itemLevel: '+9',
-    slotLabel: 'ARMOR (CHEST)',
-    category: 'armor',
-    rarity: 'rare',
-    imagePath: '',
-    spriteUrl: '',
-    defense: 67,
-    damageMin: 0,
-    damageMax: 0,
-    attackSpeed: 0,
-    durability: 83,
-    maxDurability: 68,
-    strengthReq: 152,
-    agilityReq: 0,
-    classesAllowed: ['Dark Knight', 'Magic Gladiator'],
-    additionalStat: '',
-    harmonyOption: '',
-    gearTechOption: '',
-    hasSkill: false,
-    hasLuck: true,
-    excellentOptions: [] as string[],
-    gearScore: 57,
-  };
-
-  const normalized = text.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
-
-  // Rarity
-  const rMatch = normalized.match(/(?:RAREZA|RARITY)\s*[:.]?\s*(LEGENDARY|EPIC|RARE|UNCOMMON|EXCELENTE|COMMON)/i);
-  if (rMatch) {
-    const rRaw = rMatch[1].toUpperCase();
-    if (rRaw === 'EPIC') { result.rarity = 'epic'; result.tag = '[EPIC]'; }
-    else if (rRaw === 'RARE') { result.rarity = 'rare'; result.tag = '[RARE]'; }
-    else if (rRaw === 'LEGENDARY') { result.rarity = 'legendary'; result.tag = '[LEGENDARY]'; }
-    else if (rRaw === 'UNCOMMON' || rRaw === 'EXCELENTE') { result.rarity = 'uncommon'; result.tag = '[EXC]'; }
-  }
-
-  // Item Level
-  const lvlMatch = normalized.match(/\+(\d{1,2})/);
-  if (lvlMatch) result.itemLevel = `+${lvlMatch[1]}`;
-
-  // Item Name cleanup & detection
-  const cleanName = cleanMuItemName(normalized);
-  if (/Dragon\s*Arm/i.test(cleanName) || /Dragon\s*Armor/i.test(normalized)) {
-    result.itemName = 'Dragon Armor';
-    result.slotLabel = 'ARMOR (CHEST)';
-    result.category = 'armor';
-    result.defense = 67;
-    result.durability = 83;
-    result.maxDurability = 68;
-    result.strengthReq = 152;
-  } else if (/Dragon\s*Helm/i.test(cleanName) || /Dragon\s*Helm/i.test(normalized)) {
-    result.itemName = 'Dragon Helm';
-    result.slotLabel = 'HELMET';
-    result.category = 'armor';
-    result.defense = 42;
-  } else if (/Dragon\s*Pants/i.test(cleanName) || /Dragon\s*Pants/i.test(normalized)) {
-    result.itemName = 'Dragon Pants';
-    result.slotLabel = 'PANTS';
-    result.category = 'armor';
-    result.defense = 48;
-  } else if (/Dragon\s*Gloves/i.test(cleanName) || /Dragon\s*Gloves/i.test(normalized)) {
-    result.itemName = 'Dragon Gloves';
-    result.slotLabel = 'GLOVES';
-    result.category = 'armor';
-    result.defense = 33;
-  } else if (/Dragon\s*Boots/i.test(cleanName) || /Dragon\s*Boots/i.test(normalized)) {
-    result.itemName = 'Dragon Boots';
-    result.slotLabel = 'BOOTS';
-    result.category = 'armor';
-    result.defense = 34;
-  } else if (/Sphinx\s*Armor/i.test(cleanName) || /Sphinx\s*Armor/i.test(normalized)) {
-    result.itemName = 'Sphinx Armor';
-    result.slotLabel = 'ARMOR (CHEST)';
-    result.category = 'armor';
-    result.defense = 67;
-  } else if (/Legendary\s*Gloves/i.test(cleanName) || /Legendary\s*Gloves/i.test(normalized)) {
-    result.itemName = 'Legendary Gloves';
-    result.slotLabel = 'GLOVES';
-    result.category = 'armor';
-    result.defense = 47;
-  } else if (/Platina\s*Staff/i.test(cleanName) || /Platina/i.test(normalized)) {
-    result.itemName = 'Platina Staff';
-    result.slotLabel = 'WEAPON (RIGHT)';
-    result.category = 'weapon';
-    result.damageMin = 103;
-    result.damageMax = 105;
-    result.attackSpeed = 30;
-  } else if (/Battle\s*Scepter/i.test(cleanName) || /Battle\s*Scepter/i.test(normalized)) {
-    result.itemName = 'Battle Scepter';
-    result.slotLabel = 'WEAPON (RIGHT)';
-    result.category = 'weapon';
-    result.damageMin = 41;
-    result.damageMax = 52;
-  } else if (/Great\s*Scepter/i.test(cleanName) || /Great\s*Scepter/i.test(normalized)) {
-    result.itemName = 'Great Scepter';
-    result.slotLabel = 'WEAPON (RIGHT)';
-    result.category = 'weapon';
-    result.damageMin = 74;
-    result.damageMax = 85;
-  } else if (/Bone\s*Blade/i.test(cleanName) || /Bone\s*Blade/i.test(normalized)) {
-    result.itemName = 'Bone Blade';
-    result.slotLabel = 'WEAPON (RIGHT)';
-    result.category = 'weapon';
-    result.damageMin = 135;
-    result.damageMax = 158;
-  } else if (/Wings\s*of\s*Magic/i.test(cleanName) || /Wings\s*of\s*Magic/i.test(normalized)) {
-    result.itemName = 'Wings of Magic';
-    result.slotLabel = 'WINGS';
-    result.category = 'wings';
-    result.defense = 83;
-  } else if (/Cloak\s*of\s*Death/i.test(cleanName) || /Cloak\s*of\s*Death/i.test(normalized)) {
-    result.itemName = 'Cloak of Death';
-    result.slotLabel = 'WINGS';
-    result.category = 'wings';
-    result.defense = 73;
-  }
-
-  // Catalog sprite resolution
-  const catMatch = getSmashMuItemByName(result.itemName);
-  if (catMatch) {
-    result.imagePath = getSmashMuImageUrl(catMatch.imagePath);
-    result.spriteUrl = result.imagePath;
-    result.slotLabel = catMatch.slotLabel;
-    result.category = catMatch.category;
-  } else {
-    result.imagePath = getItemSprite(result.itemName, result.category);
-    result.spriteUrl = result.imagePath;
-  }
-
-  // Defense extraction
-  const defM = normalized.match(/(?:Defensa|Defense)\s*[:.]?\s*\+?(\d{1,3})/i);
-  if (defM) result.defense = parseInt(defM[1], 10);
-
-  // Durability extraction
-  const durM = normalized.match(/(?:Durabilidad|Durability)\D*?(\d{1,3})\s*[/|\\]\s*(\d{1,3})/i);
-  if (durM) {
-    result.durability = parseInt(durM[1], 10);
-    result.maxDurability = parseInt(durM[2], 10);
-  }
-
-  return result;
-}
-
 // 1. Image Analysis / OCR Endpoint for Vercel
 router.post('/items/analyze-image', async (req: Request, res: Response) => {
   try {
     const { imageBase64 } = req.body;
-    if (!imageBase64) {
+    if (typeof imageBase64 !== 'string' || !imageBase64) {
       return res.status(400).json({ success: false, error: 'No se envió imagen' });
     }
-
-    // Default intelligent parser with Smash MU Season 6 catalog matching
-    const parsed = parseVercelItemText(typeof imageBase64 === 'string' ? imageBase64 : '');
+    const encoded = imageBase64.replace(/^data:[^;]+;base64,/, '');
+    const image = Buffer.from(encoded, 'base64');
+    if (!image.length) return res.status(400).json({ success: false, error: 'Imagen inválida' });
+    const worker = await createWorker('eng');
+    let ocrText = '';
+    try {
+      ocrText = (await worker.recognize(prepareSmallPngForOcr(image))).data.text || '';
+    } finally {
+      await worker.terminate();
+    }
+    if (ocrText.trim().length < 10) {
+      return res.status(422).json({ success: false, error: 'No se pudo leer el texto de la captura. Ingresa los datos manualmente.' });
+    }
+    const parsed = parseMuItemFromOcrText(ocrText);
     return res.json({
       success: true,
-      engine: 'catalog',
+      engine: 'ocr',
       data: parsed,
-      notice: `¡${parsed.itemName} ${parsed.itemLevel} detectado con éxito!`,
+      notice: `Se detectó ${parsed.itemName} ${parsed.itemLevel}. Confirma los atributos antes de publicar.`,
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(503).json({ success: false, error: 'No se pudo analizar la imagen. Ingresa los datos manualmente.' });
   }
 });
 

@@ -594,13 +594,6 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
           if (!item.tag) setNewTag(catalogMatch.defaultTag);
           setNewSlotLabel(catalogMatch.slotLabel);
           setNewItemCategory(catalogMatch.category);
-          if (catalogMatch.stats) {
-            if ((!item.defense || item.defense === 0) && catalogMatch.stats.defense) setNewDefense(catalogMatch.stats.defense);
-            if ((!item.durability || item.durability === 0) && catalogMatch.stats.maxDurability) {
-              setNewDurability(catalogMatch.stats.maxDurability);
-              setNewMaxDurability(catalogMatch.stats.maxDurability);
-            }
-          }
         } else {
           // If no catalog match, deduce slot and category directly from item name
           if (/Armor|Armr|Pechera|Chest/i.test(clean)) {
@@ -633,62 +626,30 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
           if (item.category) setNewItemCategory(item.category);
         }
 
-        if (item.itemLevel) {
-          const lvl = item.itemLevel.startsWith('+') ? item.itemLevel : `+${item.itemLevel}`;
-          setNewItemLevel(lvl);
-        }
-        if (typeof item.damageMin === 'number') setNewDamageMin(item.damageMin);
-        if (typeof item.damageMax === 'number') setNewDamageMax(item.damageMax);
-
-        // Ensure defense is never left as 0 for armor/wings
-        const detectedDefense = typeof item.defense === 'number' && item.defense > 0 ? item.defense : 0;
-        if (detectedDefense > 0) {
-          setNewDefense(detectedDefense);
-        } else if (/Armor|Armr/i.test(clean)) {
-          setNewDefense(67);
-        } else if (/Pants/i.test(clean)) {
-          setNewDefense(48);
-        } else if (/Helm/i.test(clean)) {
-          setNewDefense(42);
-        } else if (/Gloves/i.test(clean)) {
-          setNewDefense(35);
-        } else if (/Boots/i.test(clean)) {
-          setNewDefense(36);
-        } else if (/Wings|Cloak/i.test(clean)) {
-          setNewDefense(83);
-        }
-
-        if (typeof item.attackSpeed === 'number') setNewAttackSpeed(item.attackSpeed);
-
-        // Ensure durability is never left as 0/0
-        const detectedDur = typeof item.durability === 'number' && item.durability > 0 ? item.durability : 83;
-        const detectedMaxDur = typeof item.maxDurability === 'number' && item.maxDurability > 0 ? item.maxDurability : 68;
-        setNewDurability(detectedDur);
-        setNewMaxDurability(detectedMaxDur);
-
-        if (typeof item.strengthReq === 'number' && item.strengthReq > 0) setNewStrengthReq(item.strengthReq);
-        else if (/Dragon/i.test(clean)) setNewStrengthReq(152);
-
-        if (typeof item.agilityReq === 'number') setNewAgilityReq(item.agilityReq);
-        if (typeof item.energyReq === 'number') setNewEnergyReq(item.energyReq);
-        if (Array.isArray(item.classesAllowed) && item.classesAllowed.length > 0) {
-          setNewClassesAllowed(item.classesAllowed);
-        }
-        if (item.additionalStat) setNewAdditionalStat(item.additionalStat);
-        if (item.gearTechOption) setNewGearTechOption(item.gearTechOption);
-        if (typeof item.gearScore === 'number') setNewGearScore(item.gearScore);
-        if (item.hasSkill !== undefined) setNewHasSkill(Boolean(item.hasSkill));
-        setNewHasLuck(item.hasLuck !== false);
-        if (Array.isArray(item.excellentOptions) && item.excellentOptions.length > 0) {
-          setNewSelectedExcOptions(item.excellentOptions);
-        }
-        if (item.harmonyOption) {
-          setNewHarmonyOption(item.harmonyOption);
-        }
+        setNewItemLevel(item.itemLevel ? (item.itemLevel.startsWith('+') ? item.itemLevel : `+${item.itemLevel}`) : '+0');
+        setNewDamageMin(typeof item.damageMin === 'number' ? item.damageMin : 0);
+        setNewDamageMax(typeof item.damageMax === 'number' ? item.damageMax : 0);
+        setNewDefense(typeof item.defense === 'number' ? item.defense : 0);
+        setNewAttackSpeed(typeof item.attackSpeed === 'number' ? item.attackSpeed : 0);
+        setNewDurability(typeof item.durability === 'number' ? item.durability : 0);
+        setNewMaxDurability(typeof item.maxDurability === 'number' ? item.maxDurability : 0);
+        setNewStrengthReq(item.strengthReq || undefined);
+        setNewAgilityReq(item.agilityReq || undefined);
+        setNewEnergyReq(item.energyReq || undefined);
+        setNewClassesAllowed(Array.isArray(item.classesAllowed) ? item.classesAllowed : []);
+        setNewAdditionalStat(item.additionalStat || '');
+        setNewGearTechOption(item.gearTechOption || '');
+        setNewGearScore(typeof item.gearScore === 'number' ? item.gearScore : undefined);
+        setNewHasSkill(Boolean(item.hasSkill));
+        setNewHasLuck(Boolean(item.hasLuck));
+        setNewSelectedExcOptions(Array.isArray(item.excellentOptions) ? item.excellentOptions : []);
+        setNewHarmonyOption(item.harmonyOption || '');
 
         setAnalysisStatus({
-          type: 'success',
-          message: `¡Todos los datos detectados! ${item.tag || ''} ${item.itemName} ${item.itemLevel || ''} · ${item.excellentOptions?.length || 0} Exc · GearScore ${item.gearScore || 'N/A'}.`,
+          type: item.levelDetected === false ? 'error' : 'success',
+          message: item.levelDetected === false
+            ? `Nivel no visible en la captura: se ha seleccionado +0. Confirma este valor y los campos que el OCR no pudo leer antes de publicar.`
+            : `Datos detectados: ${item.tag || ''} ${item.itemName} ${item.itemLevel || ''} · ${item.excellentOptions?.length || 0} Exc · GearScore ${item.gearScore || 'N/A'}.`,
         });
       } else {
         setAnalysisStatus({
@@ -1401,7 +1362,7 @@ export const AuctionView: React.FC<AuctionViewProps> = ({
     return {
       tag: newTag || defaultTagForRarity,
       itemName: cleanName,
-      itemLevel: newItemLevel || '+15',
+      itemLevel: newItemLevel || '+0',
       slotLabel: newSlotLabel,
       category: newItemCategory,
       rarity: newRarity,
